@@ -6,7 +6,11 @@ using System.Threading.Tasks;
 
 namespace DataMapper
 {
-    internal class Copy
+    public class Copy
     {
+        public int Id { get; set; }
+        public Edition Edition { get; set; }
+        public bool IsReadingRoomOnly { get; set; }
+        public bool IsAvailable { get; set; }
     }
 }

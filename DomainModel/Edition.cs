@@ -6,7 +6,14 @@ using System.Threading.Tasks;
 
 namespace DataMapper
 {
-    internal class Edition
+    public class Edition
     {
+        public int Id { get; set; }
+        public Book Book { get; set; }
+        public string Publisher { get; set; }
+        public int Year { get; set; }
+        public int Pages { get; set; }
+        public string Type { get; set; } // Ex: Hardcover, Paperback
+
     }
 }
