@@ -3,8 +3,6 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.14.36623.8
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TemaASSP", "TemaASSP\TemaASSP.csproj", "{8B7E9889-5D96-4AD6-8D95-A89A5F95250E}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{02EA681E-C7D8-13C7-8484-4AC65E1B71E8}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "sources", "sources", "{1FDC044C-2666-427D-B6A8-2D31FBE90C9F}"
@@ -39,10 +37,6 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{8B7E9889-5D96-4AD6-8D95-A89A5F95250E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{8B7E9889-5D96-4AD6-8D95-A89A5F95250E}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{8B7E9889-5D96-4AD6-8D95-A89A5F95250E}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{8B7E9889-5D96-4AD6-8D95-A89A5F95250E}.Release|Any CPU.Build.0 = Release|Any CPU
 		{1B0CB0D3-764A-4556-805F-CF583D4CF81D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{1B0CB0D3-764A-4556-805F-CF583D4CF81D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1B0CB0D3-764A-4556-805F-CF583D4CF81D}.Release|Any CPU.ActiveCfg = Release|Any CPU
