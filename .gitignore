@@ -1,0 +1,9 @@
+# Visual Studio / .NET ignore rules
+.vs/
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.vscode/
