@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace DataMapper
 {
-    public class Class1
+    internal class Copy
     {
     }
 }
