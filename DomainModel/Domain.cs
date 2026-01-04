@@ -10,35 +10,34 @@ namespace DataMapper
     public class Domain
     {
 
-        public int Id { get; set; }
+        /// <summary>
+        /// Initializes a new instance of the <see cref="Domain"/> class
+        /// </summary>
+        public Domain()
+        {
+            this.Books = new HashSet<Book>();
+        }
 
-        [Required(ErrorMessage = "Domain name is required")]
-        [StringLength(100, MinimumLength = 2, ErrorMessage = "Domain name must be between 2 and 100 characters")]
+        /// <summary>
+        /// Gets or sets the Id of the domain
+        /// </summary>
+        public int DomainId { get; set; }
+
+        /// <summary>
+        /// Gets or sets the name of the book domain
+        /// </summary>
+        [Required(ErrorMessage = "The name cannot be null")]
+        [StringLength(50, ErrorMessage = "The domain name must be between 5 and 50 characters", MinimumLength = 5)]
         public string Name { get; set; }
 
+        /// <summary>
+        /// Gets or sets the parent domain of the current domain.
+        /// </summary>
         public Domain Parent { get; set; }
 
-        public List<Domain> Children { get; } = new List<Domain>();
-
-        public Domain(string name)
-        {
-            Name = name;
-        }
-
-        // Get all ancestor domains (parents, grandparents, etc.)
-        public List<Domain> GetAncestors()
-        {
-            var ancestors = new List<Domain>();
-            var current = Parent;
-            while (current != null)
-            {
-                ancestors.Add(current);
-                current = current.Parent;
-            }
-            return ancestors;
-        }
-
-        // Check if this domain is leaf (has no children)
-        public bool IsLeaf => Children.Count == 0;
+        /// <summary>
+        /// Gets or sets the books from the domain.
+        /// </summary>
+        public virtual ICollection<Book> Books { get; set; }
     }
 }

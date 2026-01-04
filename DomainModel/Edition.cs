@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -9,25 +10,50 @@ namespace DataMapper
 {
     public class Edition
     {
-        public int Id { get; set; }
+        /// <summary>
+        /// Gets or sets the id
+        /// </summary>
+        [ForeignKey("Book")]
+        public int EditionId { get; set; }
 
-        [Required(ErrorMessage = "Book reference is required")]
-        public Book Book { get; set; }
-
-        [Required(ErrorMessage = "Publisher is required")]
-        [StringLength(100, MinimumLength = 2, ErrorMessage = "Publisher name must be between 2 and 100 characters")]
+        /// <summary>
+        /// Gets or sets the name of the publisher for the current book
+        /// </summary>
+        [Required(ErrorMessage = "The publisher name cannot be null")]
+        [StringLength(50, ErrorMessage = "The publisher name must be between 5 and 50 characters", MinimumLength = 5)]
         public string Publisher { get; set; }
 
-        [Range(1500, 2030, ErrorMessage = "Year must be between 1500 and 2030")]
-        public int Year { get; set; }
+        /// <summary>
+        /// Gets or sets the number of pages for the current book
+        /// </summary>
+        [Required(ErrorMessage = "The book's number of pages cannot be null")]
+        [Range(3, int.MaxValue, ErrorMessage = "The book must contain more than 2 pages")]
+        public int NumberOfPages { get; set; }
 
-        [Range(1, 10000, ErrorMessage = "Pages must be between 1 and 10000")]
-        public int Pages { get; set; }
+        /// <summary>
+        /// Gets or sets the year when the current book edition was published
+        /// </summary>
+        [Required(ErrorMessage = "The book's year of publishing cannot be null")]
+        [RegularExpression("[1-2]+[0-9]+[0-9]+[0-9]")]
+        public int YearOfPublishing { get; set; }
 
-        [StringLength(50, ErrorMessage = "Type cannot exceed 50 characters")]
-        public string Type { get; set; } // Ex: Hardcover, Paperback
+        /// <summary>
+        /// Gets or sets the type of the book (paperback or hardcover)
+        /// </summary>
+        [Required(ErrorMessage = "The book's type cannot be null")]
+        [StringLength(50, ErrorMessage = "The book's type must contain between 5 and 50 characters", MinimumLength = 5)]
+        public string Type { get; set; }
 
-        public List<Copy> Copies { get; } = new List<Copy>();
+        /// <summary>
+        /// Gets or sets the book (for one-to-one relation)
+        /// </summary>
+        [Required(ErrorMessage = "The edition's coresponding book cannot be null")]
+        public virtual Book Book { get; set; }
+
+        /// <summary>
+        /// Gets or sets the copies of this edition
+        /// </summary>
+        public virtual ICollection<Copy> Copies { get; set; }
 
     }
 }

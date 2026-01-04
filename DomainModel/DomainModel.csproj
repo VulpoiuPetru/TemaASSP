@@ -47,10 +47,11 @@
   <ItemGroup>
     <Compile Include="Author.cs" />
     <Compile Include="Book.cs" />
+    <Compile Include="BorrowedBooks.cs" />
     <Compile Include="Copy.cs" />
     <Compile Include="Domain.cs" />
     <Compile Include="Edition.cs" />
-    <Compile Include="Loan.cs" />
+    <Compile Include="Extension.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Reader.cs" />
   </ItemGroup>
