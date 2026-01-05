@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace ServiceLayer
 {
-    public class Class1
+    internal class BorrowBookValidation
     {
     }
 }
