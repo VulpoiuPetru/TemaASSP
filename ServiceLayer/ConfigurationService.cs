@@ -14,30 +14,36 @@ namespace ServiceLayer
     /// </summary>
     public class ConfigurationService : IConfigurationService
     {
-        private readonly IConfiguration _configuration;
-        private LibraryConfiguration _libraryConfig;
+        private readonly LibraryConfiguration _config;
 
         /// <summary>
-        /// Initializes a new instance of the ConfigurationService class
+        /// Initializes a new instance of the ConfigurationService class with default values
         /// </summary>
-        /// <param name="configuration">Configuration provider</param>
-        public ConfigurationService(IConfiguration configuration)
+        public ConfigurationService()
         {
-            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            // Default configuration values (can be loaded from file later)
+            _config = new LibraryConfiguration
+            {
+                DOMENII = 5,
+                NMC = 10,
+                PER = 30,
+                C = 5,
+                D = 3,
+                L = 6,
+                LIM = 15,
+                DELTA = 14,
+                NCZ = 3,
+                PERSIMP = 20
+            };
         }
 
         /// <summary>
-        /// Get the library configuration settings (loads from external config)
+        /// Get the library configuration settings
         /// </summary>
         /// <returns>Library configuration</returns>
         public LibraryConfiguration GetConfiguration()
         {
-            if (_libraryConfig == null)
-            {
-                _libraryConfig = _configuration.GetSection("LibraryConfiguration").Get<LibraryConfiguration>()
-                    ?? throw new InvalidOperationException("LibraryConfiguration section not found in configuration");
-            }
-            return _libraryConfig;
+            return _config;
         }
 
         /// <summary>
@@ -47,20 +53,18 @@ namespace ServiceLayer
         /// <returns>Adjusted limits for the reader</returns>
         public ReaderLimits GetReaderLimits(Reader reader)
         {
-            var config = GetConfiguration();
-
             if (reader.IsEmployee)
             {
                 // Staff members get special treatment per requirements
                 return new ReaderLimits
                 {
-                    NMC = config.NMC * 2,      // doubled
-                    C = config.C * 2,          // doubled  
-                    D = config.D * 2,          // doubled
-                    LIM = config.LIM * 2,      // doubled
-                    DELTA = config.DELTA / 2,  // halved
-                    PER = config.PER / 2,      // halved
-                    NCZ = int.MaxValue         // ignored for staff
+                    NMC = _config.NMC * 2,      // doubled
+                    C = _config.C * 2,          // doubled  
+                    D = _config.D * 2,          // doubled
+                    LIM = _config.LIM * 2,      // doubled
+                    DELTA = _config.DELTA / 2,  // halved
+                    PER = _config.PER / 2,      // halved
+                    NCZ = int.MaxValue          // ignored for staff
                 };
             }
             else
@@ -68,13 +72,13 @@ namespace ServiceLayer
                 // Regular readers get base configuration
                 return new ReaderLimits
                 {
-                    NMC = config.NMC,
-                    C = config.C,
-                    D = config.D,
-                    LIM = config.LIM,
-                    DELTA = config.DELTA,
-                    PER = config.PER,
-                    NCZ = config.NCZ
+                    NMC = _config.NMC,
+                    C = _config.C,
+                    D = _config.D,
+                    LIM = _config.LIM,
+                    DELTA = _config.DELTA,
+                    PER = _config.PER,
+                    NCZ = _config.NCZ
                 };
             }
         }
