@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DataMapper
+namespace DomainModel
 {
     /// <summary>
     /// Represents a borrowing period extension request for a borrowed book.

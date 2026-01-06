@@ -1,9 +1,9 @@
-﻿using DataMapper;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using DomainModel;
 
 namespace ServiceLayer
 {
@@ -134,7 +134,7 @@ namespace ServiceLayer
                 throw new InvalidOperationException("Cannot extend an overdue book");
 
             // Validate extension request
-            if (!_borrowValidation.ValidateExtensionRequest(borrowedBook, extensionDays))
+            if (!_borrowValidation.ValidateExtensionRequest(borrowedBook: borrowedBook, extensionDays))
                 throw new InvalidOperationException("Extension request exceeds allowed limits");
 
             // Apply extension
