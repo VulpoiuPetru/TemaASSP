@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using DomainModel;
+using DataMapper.RepoInterfaces;
 
 namespace ServiceLayer
 {
@@ -13,16 +14,23 @@ namespace ServiceLayer
     public class BookService : IBookService
     {
         private readonly IConfigurationService _configService;
-        // TODO: Add repository when Data Layer is implemented
-        private static List<Book> _books = new List<Book>(); // Temporary in-memory storage
+        private readonly IBookRepository _bookRepository;
+        private readonly IDomainRepository _domainRepository;
 
         /// <summary>
         /// Initializes a new instance of the BookService class
         /// </summary>
         /// <param name="configService">Configuration service</param>
-        public BookService(IConfigurationService configService)
+        /// <param name="bookRepository">Book repository</param>
+        /// <param name="domainRepository">Domain repository</param>
+        public BookService(
+            IConfigurationService configService,
+            IBookRepository bookRepository,
+            IDomainRepository domainRepository)
         {
             _configService = configService ?? throw new ArgumentNullException(nameof(configService));
+            _bookRepository = bookRepository ?? throw new ArgumentNullException(nameof(bookRepository));
+            _domainRepository = domainRepository ?? throw new ArgumentNullException(nameof(domainRepository));
         }
 
         /// <summary>
@@ -40,11 +48,9 @@ namespace ServiceLayer
             // Validate domain assignment rules
             ValidateDomainAssignment(book);
 
-            // Assign new ID (temporary - will be handled by database)
-            book.BookId = _books.Count > 0 ? _books.Max(b => b.BookId) + 1 : 1;
-
-            // Add to storage
-            _books.Add(book);
+            // Add to database
+            _bookRepository.Add(book);
+            _bookRepository.SaveChanges();
         }
 
         /// <summary>
@@ -66,9 +72,9 @@ namespace ServiceLayer
             // Validate domain assignment rules
             ValidateDomainAssignment(book);
 
-            // Update the existing book
-            var index = _books.FindIndex(b => b.BookId == book.BookId);
-            _books[index] = book;
+            // Update in database
+            _bookRepository.Update(book);
+            _bookRepository.SaveChanges();
         }
 
         /// <summary>
@@ -78,7 +84,7 @@ namespace ServiceLayer
         /// <returns>The book if found</returns>
         public Book GetBookById(int bookId)
         {
-            return _books.FirstOrDefault(b => b.BookId == bookId);
+            return _bookRepository.GetById(bookId);
         }
 
         /// <summary>
@@ -87,7 +93,7 @@ namespace ServiceLayer
         /// <returns>List of all books</returns>
         public IList<Book> GetAllBooks()
         {
-            return _books.ToList();
+            return _bookRepository.GetAll();
         }
 
         /// <summary>
@@ -104,7 +110,8 @@ namespace ServiceLayer
             if (book.BorrowedBooks?.Any(bb => bb.BorrowEndDate > DateTime.Now) == true)
                 throw new InvalidOperationException("Cannot delete book with active borrows");
 
-            _books.RemoveAll(b => b.BookId == bookId);
+            _bookRepository.Delete(bookId);
+            _bookRepository.SaveChanges();
         }
 
         /// <summary>
@@ -127,10 +134,22 @@ namespace ServiceLayer
             if (domainIds.Count > config.DOMENII)
                 throw new InvalidOperationException($"Maximum allowed domains per book is {config.DOMENII}");
 
-            // For now, just clear and add domain IDs
-            // TODO: Implement proper domain validation with Data Layer
+            // Validate ancestor-descendant relationships
+            ValidateDomainRelationships(domainIds);
+
+            // Clear existing domains and add new ones
             book.Domains.Clear();
-            // Will be properly implemented when Domain repository is available
+            foreach (var domainId in domainIds)
+            {
+                var domain = _domainRepository.GetById(domainId);
+                if (domain == null)
+                    throw new InvalidOperationException($"Domain with ID {domainId} not found");
+
+                book.Domains.Add(domain);
+            }
+
+            _bookRepository.Update(book);
+            _bookRepository.SaveChanges();
         }
 
         /// <summary>
@@ -178,8 +197,37 @@ namespace ServiceLayer
             if (book.Domains.Count > config.DOMENII)
                 throw new InvalidOperationException($"Maximum allowed domains per book is {config.DOMENII}");
 
-            // TODO: Implement ancestor-descendant validation when Domain repository is available
-            // For now, just validate count
+            // Validate ancestor-descendant relationships
+            var domainIds = book.Domains.Select(d => d.DomainId).ToList();
+            ValidateDomainRelationships(domainIds);
+        }
+
+        /// <summary>
+        /// Validates that domains don't have ancestor-descendant relationships
+        /// </summary>
+        /// <param name="domainIds">List of domain IDs to validate</param>
+        private void ValidateDomainRelationships(IList<int> domainIds)
+        {
+            // Check each pair of domains
+            for (int i = 0; i < domainIds.Count; i++)
+            {
+                for (int j = i + 1; j < domainIds.Count; j++)
+                {
+                    // Check if domain i is ancestor of domain j
+                    if (_domainRepository.IsAncestor(domainIds[i], domainIds[j]))
+                    {
+                        throw new InvalidOperationException(
+                            $"Cannot assign book to both a domain and its ancestor domain (IDs: {domainIds[i]}, {domainIds[j]})");
+                    }
+
+                    // Check if domain j is ancestor of domain i
+                    if (_domainRepository.IsAncestor(domainIds[j], domainIds[i]))
+                    {
+                        throw new InvalidOperationException(
+                            $"Cannot assign book to both a domain and its ancestor domain (IDs: {domainIds[j]}, {domainIds[i]})");
+                    }
+                }
+            }
         }
     }
 }

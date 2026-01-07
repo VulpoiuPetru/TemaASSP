@@ -1,9 +1,10 @@
-﻿using System;
+﻿using DataMapper.RepoInterfaces;
+using DomainModel;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using DomainModel;
 
 namespace ServiceLayer
 {
@@ -15,21 +16,29 @@ namespace ServiceLayer
         private readonly IBorrowBookValidation _borrowValidation;
         private readonly IBookService _bookService;
         private readonly IReaderService _readerService;
-
-        // TODO: Add repository when Data Layer is implemented
-        private static List<BorrowedBooks> _borrowedBooks = new List<BorrowedBooks>(); // Temporary in-memory storage
+        private readonly IBorrowedBooksRepository _borrowedBooksRepository;
+        private readonly IExtensionRepository _extensionRepository;
 
         /// <summary>
         /// Initializes a new instance of the BorrowedBookService class
         /// </summary>
+        /// <param name="borrowValidation">Borrow validation service</param>
+        /// <param name="bookService">Book service</param>
+        /// <param name="readerService">Reader service</param>
+        /// <param name="borrowedBooksRepository">Borrowed books repository</param>
+        /// <param name="extensionRepository">Extension repository</param>
         public BorrowedBookService(
             IBorrowBookValidation borrowValidation,
             IBookService bookService,
-            IReaderService readerService)
+            IReaderService readerService,
+            IBorrowedBooksRepository borrowedBooksRepository,
+            IExtensionRepository extensionRepository)
         {
             _borrowValidation = borrowValidation ?? throw new ArgumentNullException(nameof(borrowValidation));
             _bookService = bookService ?? throw new ArgumentNullException(nameof(bookService));
             _readerService = readerService ?? throw new ArgumentNullException(nameof(readerService));
+            _borrowedBooksRepository = borrowedBooksRepository ?? throw new ArgumentNullException(nameof(borrowedBooksRepository));
+            _extensionRepository = extensionRepository ?? throw new ArgumentNullException(nameof(extensionRepository));
         }
 
         /// <summary>
@@ -99,7 +108,7 @@ namespace ServiceLayer
                     Reader = reader
                 };
 
-                _borrowedBooks.Add(borrowedBook);
+                _borrowedBooksRepository.Add(borrowedBook);
 
                 // Update book availability
                 var existingBook = _bookService.GetBookById(book.BookId);
@@ -109,6 +118,8 @@ namespace ServiceLayer
                     _bookService.UpdateBook(existingBook);
                 }
             }
+
+            _borrowedBooksRepository.SaveChanges();
         }
 
         /// <summary>
@@ -124,9 +135,7 @@ namespace ServiceLayer
             if (extensionDays <= 0 || extensionDays > 90)
                 throw new ArgumentException("Extension days must be between 1 and 90");
 
-            var existingBorrow = _borrowedBooks.FirstOrDefault(bb =>
-                bb.BookId == borrowedBook.BookId && bb.ReaderId == borrowedBook.ReaderId);
-
+            var existingBorrow = _borrowedBooksRepository.GetByIds(borrowedBook.BookId, borrowedBook.ReaderId);
             if (existingBorrow == null)
                 throw new InvalidOperationException("Borrowed book record not found");
 
@@ -134,7 +143,7 @@ namespace ServiceLayer
                 throw new InvalidOperationException("Cannot extend an overdue book");
 
             // Validate extension request
-            if (!_borrowValidation.ValidateExtensionRequest(borrowedBook: borrowedBook, extensionDays))
+            if (!_borrowValidation.ValidateExtensionRequest(existingBorrow, extensionDays))
                 throw new InvalidOperationException("Extension request exceeds allowed limits");
 
             // Apply extension
@@ -147,6 +156,20 @@ namespace ServiceLayer
                 existingBorrow.BorrowEndDateExtended = existingBorrow.BorrowEndDateExtended.AddDays(extensionDays);
             }
 
+            _borrowedBooksRepository.Update(existingBorrow);
+
+            // Create extension record
+            var extension = new Extension
+            {
+                BookId = borrowedBook.BookId,
+                ReaderId = borrowedBook.ReaderId,
+                RequestDate = DateTime.Now,
+                ExtensionDays = extensionDays,
+                BorrowedBooks = existingBorrow
+            };
+
+            _extensionRepository.Add(extension);
+
             // Update reader's extension count
             var reader = _readerService.GetReaderById(borrowedBook.ReaderId);
             if (reader != null)
@@ -154,6 +177,8 @@ namespace ServiceLayer
                 reader.NumberOfExtensions++;
                 _readerService.UpdateReader(reader);
             }
+
+            _borrowedBooksRepository.SaveChanges();
         }
 
         /// <summary>
@@ -163,14 +188,12 @@ namespace ServiceLayer
         /// <param name="bookId">The book identifier</param>
         public void ReturnBook(int readerId, int bookId)
         {
-            var borrowedBook = _borrowedBooks.FirstOrDefault(bb =>
-                bb.BookId == bookId && bb.ReaderId == readerId);
-
+            var borrowedBook = _borrowedBooksRepository.GetByIds(bookId, readerId);
             if (borrowedBook == null)
                 throw new InvalidOperationException("Borrowed book record not found");
 
             // Remove from borrowed books
-            _borrowedBooks.Remove(borrowedBook);
+            _borrowedBooksRepository.Delete(bookId, readerId);
 
             // Update book availability
             var book = _bookService.GetBookById(bookId);
@@ -179,6 +202,8 @@ namespace ServiceLayer
                 book.NumberOfAvailableBooks++;
                 _bookService.UpdateBook(book);
             }
+
+            _borrowedBooksRepository.SaveChanges();
         }
 
         /// <summary>
@@ -188,7 +213,7 @@ namespace ServiceLayer
         /// <returns>List of borrowed books</returns>
         public IList<BorrowedBooks> GetBorrowedBooksByReader(int readerId)
         {
-            return _borrowedBooks.Where(bb => bb.ReaderId == readerId).ToList();
+            return _borrowedBooksRepository.GetByReader(readerId);
         }
 
         /// <summary>
@@ -197,7 +222,7 @@ namespace ServiceLayer
         /// <returns>List of all borrowed books</returns>
         public IList<BorrowedBooks> GetAllBorrowedBooks()
         {
-            return _borrowedBooks.ToList();
+            return _borrowedBooksRepository.GetAll();
         }
     }
 }

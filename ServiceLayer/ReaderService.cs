@@ -1,9 +1,10 @@
-﻿using System;
+﻿using DataMapper.RepoInterfaces;
+using DomainModel;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using DomainModel;
 
 namespace ServiceLayer
 {
@@ -12,14 +13,15 @@ namespace ServiceLayer
     /// </summary>
     public class ReaderService : IReaderService
     {
-        // TODO: Add repository when Data Layer is implemented
-        private static List<Reader> _readers = new List<Reader>(); // Temporary in-memory storage
+        private readonly IReaderRepository _readerRepository;
 
         /// <summary>
         /// Initializes a new instance of the ReaderService class
         /// </summary>
-        public ReaderService()
+        /// <param name="readerRepository">Reader repository</param>
+        public ReaderService(IReaderRepository readerRepository)
         {
+            _readerRepository = readerRepository ?? throw new ArgumentNullException(nameof(readerRepository));
         }
 
         /// <summary>
@@ -37,11 +39,9 @@ namespace ServiceLayer
             // Check for duplicate email/phone (business rule)
             ValidateUniqueContact(reader);
 
-            // Assign new ID (temporary - will be handled by database)
-            reader.ReaderId = _readers.Count > 0 ? _readers.Max(r => r.ReaderId) + 1 : 1;
-
-            // Add to storage
-            _readers.Add(reader);
+            // Add to database
+            _readerRepository.Add(reader);
+            _readerRepository.SaveChanges();
         }
 
         /// <summary>
@@ -63,9 +63,9 @@ namespace ServiceLayer
             // Check for duplicate contact info (excluding self)
             ValidateUniqueContact(reader, excludeReaderId: reader.ReaderId);
 
-            // Update the existing reader
-            var index = _readers.FindIndex(r => r.ReaderId == reader.ReaderId);
-            _readers[index] = reader;
+            // Update in database
+            _readerRepository.Update(reader);
+            _readerRepository.SaveChanges();
         }
 
         /// <summary>
@@ -75,7 +75,7 @@ namespace ServiceLayer
         /// <returns>The reader if found</returns>
         public Reader GetReaderById(int readerId)
         {
-            return _readers.FirstOrDefault(r => r.ReaderId == readerId);
+            return _readerRepository.GetById(readerId);
         }
 
         /// <summary>
@@ -84,7 +84,7 @@ namespace ServiceLayer
         /// <returns>List of all readers</returns>
         public IList<Reader> GetAllReaders()
         {
-            return _readers.ToList();
+            return _readerRepository.GetAll();
         }
 
         /// <summary>
@@ -101,7 +101,8 @@ namespace ServiceLayer
             if (reader.BorrowedBooks?.Any(bb => bb.BorrowEndDate > DateTime.Now) == true)
                 throw new InvalidOperationException("Cannot delete reader with active borrows");
 
-            _readers.RemoveAll(r => r.ReaderId == readerId);
+            _readerRepository.Delete(readerId);
+            _readerRepository.SaveChanges();
         }
 
         /// <summary>
@@ -137,17 +138,17 @@ namespace ServiceLayer
         /// <param name="excludeReaderId">Reader ID to exclude from check (for updates)</param>
         private void ValidateUniqueContact(Reader reader, int? excludeReaderId = null)
         {
-            var existingReaders = _readers.Where(r => excludeReaderId == null || r.ReaderId != excludeReaderId);
-
             if (!string.IsNullOrWhiteSpace(reader.Email))
             {
-                if (existingReaders.Any(r => r.Email?.Equals(reader.Email, StringComparison.OrdinalIgnoreCase) == true))
+                var existingReader = _readerRepository.GetByEmail(reader.Email);
+                if (existingReader != null && existingReader.ReaderId != excludeReaderId)
                     throw new InvalidOperationException("A reader with this email already exists");
             }
 
             if (!string.IsNullOrWhiteSpace(reader.PhoneNumber))
             {
-                if (existingReaders.Any(r => r.PhoneNumber?.Equals(reader.PhoneNumber) == true))
+                var existingReader = _readerRepository.GetByPhoneNumber(reader.PhoneNumber);
+                if (existingReader != null && existingReader.ReaderId != excludeReaderId)
                     throw new InvalidOperationException("A reader with this phone number already exists");
             }
         }
@@ -159,7 +160,7 @@ namespace ServiceLayer
         /// <returns>True if valid</returns>
         private bool IsValidEmail(string email)
         {
-            return email.Contains("@") && email.Contains(". ") && email.Length > 5;
+            return email.Contains("@") && email.Contains(".") && email.Length > 5;
         }
     }
 }

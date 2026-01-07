@@ -1,9 +1,10 @@
-﻿using System;
+﻿using DataMapper.RepoInterfaces;
+using DomainModel;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using DomainModel;
 
 namespace ServiceLayer
 {
@@ -13,13 +14,23 @@ namespace ServiceLayer
     public class BorrowBookValidation : IBorrowBookValidation
     {
         private readonly IConfigurationService _configService;
+        private readonly IBorrowedBooksRepository _borrowedBooksRepository;
+        private readonly IExtensionRepository _extensionRepository;
 
         /// <summary>
         /// Initializes a new instance of the BorrowBookValidation class
         /// </summary>
-        public BorrowBookValidation(IConfigurationService configService)
+        /// <param name="configService">Configuration service</param>
+        /// <param name="borrowedBooksRepository">Borrowed books repository</param>
+        /// <param name="extensionRepository">Extension repository</param>
+        public BorrowBookValidation(
+            IConfigurationService configService,
+            IBorrowedBooksRepository borrowedBooksRepository,
+            IExtensionRepository extensionRepository)
         {
             _configService = configService ?? throw new ArgumentNullException(nameof(configService));
+            _borrowedBooksRepository = borrowedBooksRepository ?? throw new ArgumentNullException(nameof(borrowedBooksRepository));
+            _extensionRepository = extensionRepository ?? throw new ArgumentNullException(nameof(extensionRepository));
         }
 
         /// <summary>
@@ -89,9 +100,13 @@ namespace ServiceLayer
             // Staff members ignore NCZ limit
             if (reader.IsEmployee) return true;
 
-            // For now, just validate the current request count
-            // TODO: Add logic to count today's borrows from database
-            return books.Count <= limits.NCZ;
+            // Count today's borrows from database
+            var today = DateTime.Today;
+            var tomorrow = today.AddDays(1);
+            var todayBorrows = _borrowedBooksRepository.GetByReaderAndDateRange(reader.ReaderId, today, tomorrow);
+
+            var totalTodayBorrows = todayBorrows.Count + books.Count;
+            return totalTodayBorrows <= limits.NCZ;
         }
 
         /// <summary>
@@ -101,9 +116,12 @@ namespace ServiceLayer
         {
             var limits = _configService.GetReaderLimits(reader);
 
-            // For now, just validate the current request count  
-            // TODO: Add logic to count period borrows from database
-            return books.Count <= limits.NMC;
+            // Count borrows in the last PER days
+            var startDate = DateTime.Now.AddDays(-limits.PER);
+            var periodBorrows = _borrowedBooksRepository.GetByReaderAndDateRange(reader.ReaderId, startDate, DateTime.Now);
+
+            var totalPeriodBorrows = periodBorrows.Count + books.Count;
+            return totalPeriodBorrows <= limits.NMC;
         }
 
         /// <summary>
@@ -112,15 +130,36 @@ namespace ServiceLayer
         public bool ValidateBorrowedBooksDomainsTypeLastMonths(IList<Book> books, Reader reader)
         {
             var limits = _configService.GetReaderLimits(reader);
+            var config = _configService.GetConfiguration();
 
-            // For now, just validate current request doesn't exceed D books from same domain
+            // Get borrows from last L months
+            var startDate = DateTime.Now.AddMonths(-config.L);
+            var recentBorrows = _borrowedBooksRepository.GetByReaderAndDateRange(reader.ReaderId, startDate, DateTime.Now);
+
+            // Count books per domain (including current request)
             var domainCounts = new Dictionary<int, int>();
 
+            // Count from recent borrows
+            foreach (var borrow in recentBorrows)
+            {
+                foreach (var domain in borrow.Book.Domains)
+                {
+                    var current = domain;
+                    while (current != null)
+                    {
+                        if (!domainCounts.ContainsKey(current.DomainId))
+                            domainCounts[current.DomainId] = 0;
+                        domainCounts[current.DomainId]++;
+                        current = current.Parent;
+                    }
+                }
+            }
+
+            // Add current request books
             foreach (var book in books)
             {
                 foreach (var domain in book.Domains)
                 {
-                    // Count this domain and all its ancestors
                     var current = domain;
                     while (current != null)
                     {
@@ -144,11 +183,25 @@ namespace ServiceLayer
         /// </summary>
         public bool ValidateBorrowSameBookInPeriod(IList<Book> books, Reader reader)
         {
-            // For now, just check no duplicate books in current request
-            var bookIds = books.Select(b => b.BookId).ToList();
-            return bookIds.Count == bookIds.Distinct().Count();
+            var limits = _configService.GetReaderLimits(reader);
 
-            // TODO: Add logic to check recent borrows from database
+            // Check no duplicate books in current request
+            var bookIds = books.Select(b => b.BookId).ToList();
+            if (bookIds.Count != bookIds.Distinct().Count())
+                return false;
+
+            // Check recent borrows for each book
+            var startDate = DateTime.Now.AddDays(-limits.DELTA);
+            foreach (var book in books)
+            {
+                var recentBorrowsForBook = _borrowedBooksRepository.GetByReaderBookAndDateRange(
+                    reader.ReaderId, book.BookId, startDate, DateTime.Now);
+
+                if (recentBorrowsForBook.Any())
+                    return false;
+            }
+
+            return true;
         }
 
         /// <summary>
@@ -158,10 +211,14 @@ namespace ServiceLayer
         {
             var limits = _configService.GetReaderLimits(borrowedBook.Reader);
 
-            // For now, just validate single extension doesn't exceed limit
-            return extensionDays <= limits.LIM;
+            // Sum extensions from last 3 months
+            var totalExtensionDays = _extensionRepository.GetTotalExtensionDaysForReaderInLastMonths(
+                borrowedBook.ReaderId, 3);
 
-            // TODO: Add logic to sum recent extensions from database
+            // Add current extension request
+            var totalWithCurrent = totalExtensionDays + extensionDays;
+
+            return totalWithCurrent <= limits.LIM;
         }
     }
 }
