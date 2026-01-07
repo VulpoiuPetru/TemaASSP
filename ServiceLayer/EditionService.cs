@@ -1,0 +1,161 @@
+﻿using DataMapper.RepoInterfaces;
+using DomainModel;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace ServiceLayer
+{
+    /// <summary>
+    /// Service for edition management operations with business logic validation
+    /// </summary>
+    public class EditionService : IEditionService
+    {
+        private readonly IEditionRepository _editionRepository;
+        private readonly IBookRepository _bookRepository;
+
+        /// <summary>
+        /// Initializes a new instance of the EditionService class
+        /// </summary>
+        /// <param name="editionRepository">Edition repository</param>
+        /// <param name="bookRepository">Book repository</param>
+        public EditionService(IEditionRepository editionRepository, IBookRepository bookRepository)
+        {
+            _editionRepository = editionRepository ?? throw new ArgumentNullException(nameof(editionRepository));
+            _bookRepository = bookRepository ?? throw new ArgumentNullException(nameof(bookRepository));
+        }
+
+        /// <summary>
+        /// Validate and pass an edition object to the data service for creation
+        /// </summary>
+        /// <param name="edition">The edition</param>
+        public void AddEdition(Edition edition)
+        {
+            if (edition == null)
+                throw new ArgumentNullException(nameof(edition), "Edition cannot be null");
+
+            ValidateEdition(edition);
+
+            if (edition.Book != null)
+            {
+                var book = _bookRepository.GetById(edition.Book.BookId);
+                if (book == null)
+                    throw new InvalidOperationException($"Book with ID {edition.Book.BookId} not found");
+            }
+
+            _editionRepository.Add(edition);
+            _editionRepository.SaveChanges();
+        }
+
+        /// <summary>
+        /// Validate and pass an edition object to the data service for updating
+        /// </summary>
+        /// <param name="edition">The edition</param>
+        public void UpdateEdition(Edition edition)
+        {
+            if (edition == null)
+                throw new ArgumentNullException(nameof(edition), "Edition cannot be null");
+
+            var existingEdition = GetEditionById(edition.EditionId);
+            if (existingEdition == null)
+                throw new InvalidOperationException($"Edition with ID {edition.EditionId} not found");
+
+            ValidateEdition(edition);
+
+            _editionRepository.Update(edition);
+            _editionRepository.SaveChanges();
+        }
+
+        /// <summary>
+        /// Get an edition by its identifier
+        /// </summary>
+        /// <param name="editionId">The edition identifier</param>
+        /// <returns>The edition if found</returns>
+        public Edition GetEditionById(int editionId)
+        {
+            return _editionRepository.GetById(editionId);
+        }
+
+        /// <summary>
+        /// Get all editions
+        /// </summary>
+        /// <returns>List of all editions</returns>
+        public IList<Edition> GetAllEditions()
+        {
+            return _editionRepository.GetAll();
+        }
+
+        /// <summary>
+        /// Delete an edition by its identifier
+        /// </summary>
+        /// <param name="editionId">The edition identifier</param>
+        public void DeleteEdition(int editionId)
+        {
+            var edition = GetEditionById(editionId);
+            if (edition == null)
+                throw new InvalidOperationException($"Edition with ID {editionId} not found");
+
+            if (edition.Copies?.Any() == true)
+                throw new InvalidOperationException("Cannot delete edition with associated copies");
+
+            _editionRepository.Delete(editionId);
+            _editionRepository.SaveChanges();
+        }
+
+        /// <summary>
+        /// Get editions by publisher name
+        /// </summary>
+        /// <param name="publisherName">The publisher name</param>
+        /// <returns>List of editions from the publisher</returns>
+        public IList<Edition> GetByPublisher(string publisherName)
+        {
+            if (string.IsNullOrWhiteSpace(publisherName))
+                throw new ArgumentException("Publisher name cannot be empty");
+
+            return _editionRepository.GetByPublisher(publisherName);
+        }
+
+        /// <summary>
+        /// Get editions by year of publishing
+        /// </summary>
+        /// <param name="year">The year of publishing</param>
+        /// <returns>List of editions from the year</returns>
+        public IList<Edition> GetByYear(int year)
+        {
+            if (year < 1000 || year > 2999)
+                throw new ArgumentException("Year must be between 1000 and 2999");
+
+            return _editionRepository.GetByYear(year);
+        }
+
+        /// <summary>
+        /// Validates edition data according to business rules
+        /// </summary>
+        /// <param name="edition">Edition to validate</param>
+        private void ValidateEdition(Edition edition)
+        {
+            if (string.IsNullOrWhiteSpace(edition.Publisher))
+                throw new ArgumentException("Publisher name is required");
+
+            if (edition.Publisher.Length < 5 || edition.Publisher.Length > 50)
+                throw new ArgumentException("Publisher name must be between 5 and 50 characters");
+
+            if (edition.NumberOfPages < 3)
+                throw new ArgumentException("Number of pages must be at least 3");
+
+            if (edition.YearOfPublishing < 1000 || edition.YearOfPublishing > 2999)
+                throw new ArgumentException("Year of publishing must be between 1000 and 2999");
+
+            if (string.IsNullOrWhiteSpace(edition.Type))
+                throw new ArgumentException("Edition type is required");
+
+            if (edition.Type.Length < 5 || edition.Type.Length > 50)
+                throw new ArgumentException("Edition type must be between 5 and 50 characters");
+
+            if (edition.Book == null)
+                throw new ArgumentException("Edition must be associated with a book");
+        }
+    }
+}

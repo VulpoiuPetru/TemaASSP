@@ -1,0 +1,168 @@
+﻿using DataMapper.RepoInterfaces;
+using DomainModel;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace ServiceLayer
+{
+    /// <summary>
+    /// Service for domain management operations with business logic validation
+    /// </summary>
+    public class DomainService : IDomainService
+    {
+        private readonly IDomainRepository _domainRepository;
+
+        /// <summary>
+        /// Initializes a new instance of the DomainService class
+        /// </summary>
+        /// <param name="domainRepository">Domain repository</param>
+        public DomainService(IDomainRepository domainRepository)
+        {
+            _domainRepository = domainRepository ?? throw new ArgumentNullException(nameof(domainRepository));
+        }
+
+        /// <summary>
+        /// Validate and pass a domain object to the data service for creation
+        /// </summary>
+        /// <param name="domain">The domain</param>
+        public void AddDomain(Domain domain)
+        {
+            if (domain == null)
+                throw new ArgumentNullException(nameof(domain), "Domain cannot be null");
+
+            ValidateDomain(domain);
+
+            if (domain.Parent != null)
+            {
+                var parentDomain = GetDomainById(domain.Parent.DomainId);
+                if (parentDomain == null)
+                    throw new InvalidOperationException($"Parent domain with ID {domain.Parent.DomainId} not found");
+            }
+
+            _domainRepository.Add(domain);
+            _domainRepository.SaveChanges();
+        }
+
+        /// <summary>
+        /// Validate and pass a domain object to the data service for updating
+        /// </summary>
+        /// <param name="domain">The domain</param>
+        public void UpdateDomain(Domain domain)
+        {
+            if (domain == null)
+                throw new ArgumentNullException(nameof(domain), "Domain cannot be null");
+
+            var existingDomain = GetDomainById(domain.DomainId);
+            if (existingDomain == null)
+                throw new InvalidOperationException($"Domain with ID {domain.DomainId} not found");
+
+            ValidateDomain(domain);
+
+            if (domain.Parent != null && domain.Parent.DomainId == domain.DomainId)
+                throw new InvalidOperationException("Domain cannot be its own parent");
+
+            if (domain.Parent != null)
+            {
+                if (_domainRepository.IsAncestor(domain.DomainId, domain.Parent.DomainId))
+                    throw new InvalidOperationException("Cannot set parent to a descendant domain (circular reference)");
+            }
+
+            _domainRepository.Update(domain);
+            _domainRepository.SaveChanges();
+        }
+
+        /// <summary>
+        /// Get a domain by its identifier
+        /// </summary>
+        /// <param name="domainId">The domain identifier</param>
+        /// <returns>The domain if found</returns>
+        public Domain GetDomainById(int domainId)
+        {
+            return _domainRepository.GetById(domainId);
+        }
+
+        /// <summary>
+        /// Get all domains
+        /// </summary>
+        /// <returns>List of all domains</returns>
+        public IList<Domain> GetAllDomains()
+        {
+            return _domainRepository.GetAll();
+        }
+
+        /// <summary>
+        /// Delete a domain by its identifier
+        /// </summary>
+        /// <param name="domainId">The domain identifier</param>
+        public void DeleteDomain(int domainId)
+        {
+            var domain = GetDomainById(domainId);
+            if (domain == null)
+                throw new InvalidOperationException($"Domain with ID {domainId} not found");
+
+            if (domain.Books?.Any() == true)
+                throw new InvalidOperationException("Cannot delete domain with associated books");
+
+            var descendants = _domainRepository.GetDescendants(domainId);
+            if (descendants.Any())
+                throw new InvalidOperationException("Cannot delete domain with child domains");
+
+            _domainRepository.Delete(domainId);
+            _domainRepository.SaveChanges();
+        }
+
+        /// <summary>
+        /// Get all root domains (domains without parents)
+        /// </summary>
+        /// <returns>List of root domains</returns>
+        public IList<Domain> GetRootDomains()
+        {
+            return _domainRepository.GetRootDomains();
+        }
+
+        /// <summary>
+        /// Get all leaf domains (domains without children)
+        /// </summary>
+        /// <returns>List of leaf domains</returns>
+        public IList<Domain> GetLeafDomains()
+        {
+            return _domainRepository.GetLeafDomains();
+        }
+
+        /// <summary>
+        /// Get all ancestor domains for a given domain
+        /// </summary>
+        /// <param name="domainId">The domain identifier</param>
+        /// <returns>List of ancestor domains</returns>
+        public IList<Domain> GetAncestors(int domainId)
+        {
+            return _domainRepository.GetAncestors(domainId);
+        }
+
+        /// <summary>
+        /// Get all descendant domains for a given domain
+        /// </summary>
+        /// <param name="domainId">The domain identifier</param>
+        /// <returns>List of descendant domains</returns>
+        public IList<Domain> GetDescendants(int domainId)
+        {
+            return _domainRepository.GetDescendants(domainId);
+        }
+
+        /// <summary>
+        /// Validates domain data according to business rules
+        /// </summary>
+        /// <param name="domain">Domain to validate</param>
+        private void ValidateDomain(Domain domain)
+        {
+            if (string.IsNullOrWhiteSpace(domain.Name))
+                throw new ArgumentException("Domain name is required");
+
+            if (domain.Name.Length < 5 || domain.Name.Length > 50)
+                throw new ArgumentException("Domain name must be between 5 and 50 characters");
+        }
+    }
+}
