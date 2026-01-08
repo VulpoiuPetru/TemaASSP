@@ -107,6 +107,7 @@
     <Compile Include="RepoInterfaces\IEditionRepository.cs" />
     <Compile Include="RepoInterfaces\IExtensionRepository.cs" />
     <Compile Include="RepoInterfaces\IReaderRepository.cs" />
+    <Compile Include="RepoServiceCollectionMethod\RepoServiceCollection.cs" />
     <Compile Include="Repositories\AuthorRepository.cs" />
     <Compile Include="Repositories\BookRepository.cs" />
     <Compile Include="Repositories\BorrowedBooksRepository.cs" />
@@ -115,7 +116,6 @@
     <Compile Include="Repositories\EditionRepository.cs" />
     <Compile Include="Repositories\ExtensionRepository.cs" />
     <Compile Include="Repositories\ReaderRepository.cs" />
-    <Compile Include="ServiceCollectionExtensionMethods\ServiceCollectionExtensions.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
