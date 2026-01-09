@@ -11,6 +11,14 @@ namespace DomainModel
     public class Edition
     {
         /// <summary>
+        /// Initializes a new instance of the <see cref="Edition"/> class
+        /// </summary>
+        public Edition()
+        {
+            this.Copies = new HashSet<Copy>();
+        }
+
+        /// <summary>
         /// Gets or sets the id
         /// </summary>
         [ForeignKey("Book")]

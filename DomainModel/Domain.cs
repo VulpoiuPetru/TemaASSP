@@ -36,8 +36,31 @@ namespace DomainModel
         public Domain Parent { get; set; }
 
         /// <summary>
+        /// Gets or sets the subdomains of the current domain.
+        /// </summary>
+        public virtual ICollection<Domain> Subdomains { get; set; }
+
+        /// <summary>
         /// Gets or sets the books from the domain.
         /// </summary>
         public virtual ICollection<Book> Books { get; set; }
+
+        /// <summary>
+        /// Gets all ancestor domains (parent, grandparent, etc.) of the current domain
+        /// </summary>
+        /// <returns>A list of all ancestor domains</returns>
+        public List<Domain> GetAllAncestors()
+        {
+            var ancestors = new List<Domain>();
+            var current = this.Parent;
+
+            while (current != null)
+            {
+                ancestors.Add(current);
+                current = current.Parent;
+            }
+
+            return ancestors;
+        }
     }
 }
