@@ -1,5 +1,6 @@
 ﻿using DataMapper.RepoInterfaces;
 using DomainModel;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,16 +16,19 @@ namespace ServiceLayer
     {
         private readonly IEditionRepository _editionRepository;
         private readonly IBookRepository _bookRepository;
+        private readonly ILogger<EditionService> _logger;
 
         /// <summary>
         /// Initializes a new instance of the EditionService class
         /// </summary>
         /// <param name="editionRepository">Edition repository</param>
         /// <param name="bookRepository">Book repository</param>
-        public EditionService(IEditionRepository editionRepository, IBookRepository bookRepository)
+        /// <param name="logger">Logger instance</param>
+        public EditionService(IEditionRepository editionRepository, IBookRepository bookRepository, ILogger<EditionService> logger)
         {
             _editionRepository = editionRepository ?? throw new ArgumentNullException(nameof(editionRepository));
             _bookRepository = bookRepository ?? throw new ArgumentNullException(nameof(bookRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         /// <summary>
@@ -33,20 +37,29 @@ namespace ServiceLayer
         /// <param name="edition">The edition</param>
         public void AddEdition(Edition edition)
         {
-            if (edition == null)
-                throw new ArgumentNullException(nameof(edition), "Edition cannot be null");
-
-            ValidateEdition(edition);
-
-            if (edition.Book != null)
+            try
             {
-                var book = _bookRepository.GetById(edition.Book.BookId);
-                if (book == null)
-                    throw new InvalidOperationException($"Book with ID {edition.Book.BookId} not found");
-            }
+                if (edition == null)
+                    throw new ArgumentNullException(nameof(edition), "Edition cannot be null");
 
-            _editionRepository.Add(edition);
-            _editionRepository.SaveChanges();
+                ValidateEdition(edition);
+
+                if (edition.Book != null)
+                {
+                    var book = _bookRepository.GetById(edition.Book.BookId);
+                    if (book == null)
+                        throw new InvalidOperationException($"Book with ID {edition.Book.BookId} not found");
+                }
+
+                _editionRepository.Add(edition);
+                _editionRepository.SaveChanges();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error adding edition: Publisher: {Publisher}, Year: {Year}",
+                    edition?.Publisher, edition?.YearOfPublishing);
+                throw;
+            }
         }
 
         /// <summary>
@@ -55,17 +68,25 @@ namespace ServiceLayer
         /// <param name="edition">The edition</param>
         public void UpdateEdition(Edition edition)
         {
-            if (edition == null)
-                throw new ArgumentNullException(nameof(edition), "Edition cannot be null");
+            try
+            {
+                if (edition == null)
+                    throw new ArgumentNullException(nameof(edition), "Edition cannot be null");
 
-            var existingEdition = GetEditionById(edition.EditionId);
-            if (existingEdition == null)
-                throw new InvalidOperationException($"Edition with ID {edition.EditionId} not found");
+                var existingEdition = GetEditionById(edition.EditionId);
+                if (existingEdition == null)
+                    throw new InvalidOperationException($"Edition with ID {edition.EditionId} not found");
 
-            ValidateEdition(edition);
+                ValidateEdition(edition);
 
-            _editionRepository.Update(edition);
-            _editionRepository.SaveChanges();
+                _editionRepository.Update(edition);
+                _editionRepository.SaveChanges();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating edition with ID: {EditionId}", edition?.EditionId);
+                throw;
+            }
         }
 
         /// <summary>
@@ -75,7 +96,15 @@ namespace ServiceLayer
         /// <returns>The edition if found</returns>
         public Edition GetEditionById(int editionId)
         {
-            return _editionRepository.GetById(editionId);
+            try
+            {
+                return _editionRepository.GetById(editionId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving edition with ID: {EditionId}", editionId);
+                throw;
+            }
         }
 
         /// <summary>
@@ -93,15 +122,23 @@ namespace ServiceLayer
         /// <param name="editionId">The edition identifier</param>
         public void DeleteEdition(int editionId)
         {
-            var edition = GetEditionById(editionId);
-            if (edition == null)
-                throw new InvalidOperationException($"Edition with ID {editionId} not found");
+            try
+            {
+                var edition = GetEditionById(editionId);
+                if (edition == null)
+                    throw new InvalidOperationException($"Edition with ID {editionId} not found");
 
-            if (edition.Copies?.Any() == true)
-                throw new InvalidOperationException("Cannot delete edition with associated copies");
+                if (edition.Copies?.Any() == true)
+                    throw new InvalidOperationException("Cannot delete edition with associated copies");
 
-            _editionRepository.Delete(editionId);
-            _editionRepository.SaveChanges();
+                _editionRepository.Delete(editionId);
+                _editionRepository.SaveChanges();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting edition with ID: {EditionId}", editionId);
+                throw;
+            }
         }
 
         /// <summary>
@@ -124,10 +161,18 @@ namespace ServiceLayer
         /// <returns>List of editions from the year</returns>
         public IList<Edition> GetByYear(int year)
         {
-            if (year < 1000 || year > 2999)
-                throw new ArgumentException("Year must be between 1000 and 2999");
+            try
+            {
+                if (year < 1000 || year > 2999)
+                    throw new ArgumentException("Year must be between 1000 and 2999");
 
-            return _editionRepository.GetByYear(year);
+                return _editionRepository.GetByYear(year);
+            }
+            catch(Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving editions for year:",year);
+                throw;
+            }
         }
 
         /// <summary>

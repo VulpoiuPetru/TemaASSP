@@ -1,5 +1,6 @@
 ﻿using DataMapper.RepoInterfaces;
 using DomainModel;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,16 +16,22 @@ namespace ServiceLayer
     {
         private readonly ICopyRepository _copyRepository;
         private readonly IEditionRepository _editionRepository;
+        private readonly ILogger<CopyService> _logger;
 
         /// <summary>
         /// Initializes a new instance of the CopyService class
         /// </summary>
         /// <param name="copyRepository">Copy repository</param>
         /// <param name="editionRepository">Edition repository</param>
-        public CopyService(ICopyRepository copyRepository, IEditionRepository editionRepository)
+        /// <param name="logger">Logger instance</param>
+        public CopyService(
+            ICopyRepository copyRepository,
+            IEditionRepository editionRepository,
+            ILogger<CopyService> logger)
         {
             _copyRepository = copyRepository ?? throw new ArgumentNullException(nameof(copyRepository));
             _editionRepository = editionRepository ?? throw new ArgumentNullException(nameof(editionRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         /// <summary>
@@ -33,19 +40,27 @@ namespace ServiceLayer
         /// <param name="copy">The copy</param>
         public void AddCopy(Copy copy)
         {
-            if (copy == null)
-                throw new ArgumentNullException(nameof(copy), "Copy cannot be null");
-
-            ValidateCopy(copy);
-
-            if (copy.Edition != null)
+            try
             {
-                var edition = _editionRepository.GetById(copy.Edition.EditionId);
-                if (edition == null)
-                    throw new InvalidOperationException($"Edition with ID {copy.Edition.EditionId} not found");
-            }
+                if (copy == null)
+                    throw new ArgumentNullException(nameof(copy), "Copy cannot be null");
 
-            _copyRepository.Add(copy);
+                ValidateCopy(copy);
+
+                if (copy.Edition != null)
+                {
+                    var edition = _editionRepository.GetById(copy.Edition.EditionId);
+                    if (edition == null)
+                        throw new InvalidOperationException($"Edition with ID {copy.Edition.EditionId} not found");
+                }
+
+                _copyRepository.Add(copy);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error adding copy for edition ID: {EditionId}", copy?.Edition?.EditionId);
+                throw;
+            }
         }
 
         /// <summary>
@@ -54,16 +69,24 @@ namespace ServiceLayer
         /// <param name="copy">The copy</param>
         public void UpdateCopy(Copy copy)
         {
-            if (copy == null)
-                throw new ArgumentNullException(nameof(copy), "Copy cannot be null");
+            try
+            {
+                if (copy == null)
+                    throw new ArgumentNullException(nameof(copy), "Copy cannot be null");
 
-            var existingCopy = GetCopyById(copy.Id);
-            if (existingCopy == null)
-                throw new InvalidOperationException($"Copy with ID {copy.Id} not found");
+                var existingCopy = GetCopyById(copy.Id);
+                if (existingCopy == null)
+                    throw new InvalidOperationException($"Copy with ID {copy.Id} not found");
 
-            ValidateCopy(copy);
+                ValidateCopy(copy);
 
-            _copyRepository.Update(copy);
+                _copyRepository.Update(copy);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating copy with ID: {CopyId}", copy?.Id);
+                throw;
+            }
         }
 
         /// <summary>
@@ -82,7 +105,15 @@ namespace ServiceLayer
         /// <returns>List of all copies</returns>
         public IList<Copy> GetAllCopies()
         {
-            return _copyRepository.GetAll();
+            try
+            {
+                return _copyRepository.GetAll();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving all copies");
+                throw;
+            }
         }
 
         /// <summary>
@@ -91,14 +122,22 @@ namespace ServiceLayer
         /// <param name="id">The copy identifier</param>
         public void DeleteCopy(int id)
         {
-            var copy = GetCopyById(id);
-            if (copy == null)
-                throw new InvalidOperationException($"Copy with ID {id} not found");
+            try
+            {
+                var copy = GetCopyById(id);
+                if (copy == null)
+                    throw new InvalidOperationException($"Copy with ID {id} not found");
 
-            if (!copy.IsAvailable)
-                throw new InvalidOperationException("Cannot delete copy that is currently borrowed");
+                if (!copy.IsAvailable)
+                    throw new InvalidOperationException("Cannot delete copy that is currently borrowed");
 
-            _copyRepository.Delete(id);
+                _copyRepository.Delete(id);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting.");
+                throw;
+            }
         }
 
         /// <summary>

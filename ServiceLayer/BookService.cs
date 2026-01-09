@@ -1,10 +1,11 @@
-﻿using System;
+﻿using DataMapper.RepoInterfaces;
+using DomainModel;
+using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using DomainModel;
-using DataMapper.RepoInterfaces;
 
 namespace ServiceLayer
 {
@@ -16,6 +17,7 @@ namespace ServiceLayer
         private readonly IConfigurationService _configService;
         private readonly IBookRepository _bookRepository;
         private readonly IDomainRepository _domainRepository;
+        private readonly ILogger<BookService> _logger;
 
         /// <summary>
         /// Initializes a new instance of the BookService class
@@ -23,14 +25,17 @@ namespace ServiceLayer
         /// <param name="configService">Configuration service</param>
         /// <param name="bookRepository">Book repository</param>
         /// <param name="domainRepository">Domain repository</param>
+        /// <param name="logger">Logger instance</param>
         public BookService(
             IConfigurationService configService,
             IBookRepository bookRepository,
-            IDomainRepository domainRepository)
+            IDomainRepository domainRepository,
+            ILogger<BookService> logger)
         {
             _configService = configService ?? throw new ArgumentNullException(nameof(configService));
             _bookRepository = bookRepository ?? throw new ArgumentNullException(nameof(bookRepository));
             _domainRepository = domainRepository ?? throw new ArgumentNullException(nameof(domainRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         /// <summary>
@@ -39,18 +44,22 @@ namespace ServiceLayer
         /// <param name="book">The book</param>
         public void AddBook(Book book)
         {
-            if (book == null)
-                throw new ArgumentNullException(nameof(book), "Book cannot be null");
+            try
+            {
+                if (book == null)
+                    throw new ArgumentNullException(nameof(book), "Book cannot be null");
 
-            // Validate book data
-            ValidateBook(book);
+                ValidateBook(book);
+                ValidateDomainAssignment(book);
 
-            // Validate domain assignment rules
-            ValidateDomainAssignment(book);
-
-            // Add to database
-            _bookRepository.Add(book);
-            _bookRepository.SaveChanges();
+                _bookRepository.Add(book);
+                _bookRepository.SaveChanges();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error adding book: {Title}", book?.Title);
+                throw;
+            }
         }
 
         /// <summary>
@@ -59,22 +68,26 @@ namespace ServiceLayer
         /// <param name="book">The book</param>
         public void UpdateBook(Book book)
         {
-            if (book == null)
-                throw new ArgumentNullException(nameof(book), "Book cannot be null");
+            try
+            {
+                if (book == null)
+                    throw new ArgumentNullException(nameof(book), "Book cannot be null");
 
-            var existingBook = GetBookById(book.BookId);
-            if (existingBook == null)
-                throw new InvalidOperationException($"Book with ID {book.BookId} not found");
+                var existingBook = GetBookById(book.BookId);
+                if (existingBook == null)
+                    throw new InvalidOperationException($"Book with ID {book.BookId} not found");
 
-            // Validate updated book data
-            ValidateBook(book);
+                ValidateBook(book);
+                ValidateDomainAssignment(book);
 
-            // Validate domain assignment rules
-            ValidateDomainAssignment(book);
-
-            // Update in database
-            _bookRepository.Update(book);
-            _bookRepository.SaveChanges();
+                _bookRepository.Update(book);
+                _bookRepository.SaveChanges();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating book with ID: {BookId}", book?.BookId);
+                throw;
+            }
         }
 
         /// <summary>
@@ -84,7 +97,15 @@ namespace ServiceLayer
         /// <returns>The book if found</returns>
         public Book GetBookById(int bookId)
         {
-            return _bookRepository.GetById(bookId);
+            try
+            {
+                return _bookRepository.GetById(bookId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving book with ID: {BookId}", bookId);
+                throw;
+            }
         }
 
         /// <summary>
@@ -93,7 +114,15 @@ namespace ServiceLayer
         /// <returns>List of all books</returns>
         public IList<Book> GetAllBooks()
         {
-            return _bookRepository.GetAll();
+            try
+            {
+                return _bookRepository.GetAll();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving all books");
+                throw;
+            }
         }
 
         /// <summary>
@@ -102,16 +131,23 @@ namespace ServiceLayer
         /// <param name="bookId">The book identifier</param>
         public void DeleteBook(int bookId)
         {
-            var book = GetBookById(bookId);
-            if (book == null)
-                throw new InvalidOperationException($"Book with ID {bookId} not found");
+            try
+            {
+                var book = GetBookById(bookId);
+                if (book == null)
+                    throw new InvalidOperationException($"Book with ID {bookId} not found");
 
-            // Check if book has active borrows (business rule)
-            if (book.BorrowedBooks?.Any(bb => bb.BorrowEndDate > DateTime.Now) == true)
-                throw new InvalidOperationException("Cannot delete book with active borrows");
+                if (book.BorrowedBooks?.Any(bb => bb.BorrowEndDate > DateTime.Now) == true)
+                    throw new InvalidOperationException("Cannot delete book with active borrows");
 
-            _bookRepository.Delete(bookId);
-            _bookRepository.SaveChanges();
+                _bookRepository.Delete(bookId);
+                _bookRepository.SaveChanges();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting book with ID: {BookId}", bookId);
+                throw;
+            }
         }
 
         /// <summary>
@@ -121,35 +157,40 @@ namespace ServiceLayer
         /// <param name="domainIds">List of domain identifiers</param>
         public void SetBookDomains(int bookId, IList<int> domainIds)
         {
-            var book = GetBookById(bookId);
-            if (book == null)
-                throw new InvalidOperationException($"Book with ID {bookId} not found");
-
-            if (domainIds == null || !domainIds.Any())
-                throw new ArgumentException("At least one domain must be specified");
-
-            var config = _configService.GetConfiguration();
-
-            // Validate domain count
-            if (domainIds.Count > config.DOMENII)
-                throw new InvalidOperationException($"Maximum allowed domains per book is {config.DOMENII}");
-
-            // Validate ancestor-descendant relationships
-            ValidateDomainRelationships(domainIds);
-
-            // Clear existing domains and add new ones
-            book.Domains.Clear();
-            foreach (var domainId in domainIds)
+            try
             {
-                var domain = _domainRepository.GetById(domainId);
-                if (domain == null)
-                    throw new InvalidOperationException($"Domain with ID {domainId} not found");
+                var book = GetBookById(bookId);
+                if (book == null)
+                    throw new InvalidOperationException($"Book with ID {bookId} not found");
 
-                book.Domains.Add(domain);
+                if (domainIds == null || !domainIds.Any())
+                    throw new ArgumentException("At least one domain must be specified");
+
+                var config = _configService.GetConfiguration();
+
+                if (domainIds.Count > config.DOMENII)
+                    throw new InvalidOperationException($"Maximum allowed domains per book is {config.DOMENII}");
+
+                ValidateDomainRelationships(domainIds);
+
+                book.Domains.Clear();
+                foreach (var domainId in domainIds)
+                {
+                    var domain = _domainRepository.GetById(domainId);
+                    if (domain == null)
+                        throw new InvalidOperationException($"Domain with ID {domainId} not found");
+
+                    book.Domains.Add(domain);
+                }
+
+                _bookRepository.Update(book);
+                _bookRepository.SaveChanges();
             }
-
-            _bookRepository.Update(book);
-            _bookRepository.SaveChanges();
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error setting domains for book ID: {BookId}", bookId);
+                throw;
+            }
         }
 
         /// <summary>

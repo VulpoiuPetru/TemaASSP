@@ -17,7 +17,7 @@ namespace DataMapper
         /// <summary>
         /// Initializes a new instance of the <see cref="LibraryContext"/> class.
         /// </summary>
-        public LibraryContext() : base("LibraryConnectionString")
+        public LibraryContext() : base("name=LibraryDBConnectionString")
         {
         }
 
@@ -100,16 +100,39 @@ namespace DataMapper
             modelBuilder.Entity<BorrowedBooks>()
                 .HasKey(bb => new { bb.BookId, bb.ReaderId });
 
+            // Dezactivează cascade delete pentru BorrowedBooks -> Reader
+            modelBuilder.Entity<BorrowedBooks>()
+                .HasRequired(bb => bb.Reader)
+                .WithMany(r => r.BorrowedBooks)
+                .HasForeignKey(bb => bb.ReaderId)
+                .WillCascadeOnDelete(false);
+
+            // Dezactivează cascade delete pentru BorrowedBooks -> Book
+            modelBuilder.Entity<BorrowedBooks>()
+                .HasRequired(bb => bb.Book)
+                .WithMany(b => b.BorrowedBooks)
+                .HasForeignKey(bb => bb.BookId)
+                .WillCascadeOnDelete(false);
+
             // Configure self-referencing relationship for Domain (Parent-Child)
             modelBuilder.Entity<Domain>()
                 .HasOptional(d => d.Parent)
                 .WithMany()
                 .Map(m => m.MapKey("ParentDomainId"));
 
-            // Configure relationship between Copy and Edition
+            // Configure relationship between Copy and Edition - DEZACTIVEAZĂ CASCADE DELETE
             modelBuilder.Entity<Copy>()
                 .HasRequired(c => c.Edition)
-                .WithMany(e => e.Copies);
+                .WithMany(e => e.Copies)
+                .WillCascadeOnDelete(false);
+
+            // **CONFIGURARE PENTRU EXTENSION**
+            // Extension -> BorrowedBooks (folosind cheile composite BookId și ReaderId)
+            modelBuilder.Entity<Extension>()
+                .HasRequired(ext => ext.BorrowedBooks)
+                .WithMany(bb => bb.Extensions)
+                .HasForeignKey(ext => new { ext.BookId, ext.ReaderId })
+                .WillCascadeOnDelete(false);
         }
     }
 }

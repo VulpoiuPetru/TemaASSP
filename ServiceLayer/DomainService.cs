@@ -1,5 +1,6 @@
 ﻿using DataMapper.RepoInterfaces;
 using DomainModel;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,14 +15,17 @@ namespace ServiceLayer
     public class DomainService : IDomainService
     {
         private readonly IDomainRepository _domainRepository;
+        private readonly ILogger<DomainService> _logger;
 
         /// <summary>
         /// Initializes a new instance of the DomainService class
         /// </summary>
         /// <param name="domainRepository">Domain repository</param>
-        public DomainService(IDomainRepository domainRepository)
+        /// <param name="logger">Logger instance</param>
+        public DomainService(IDomainRepository domainRepository, ILogger<DomainService> logger)
         {
             _domainRepository = domainRepository ?? throw new ArgumentNullException(nameof(domainRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         /// <summary>
@@ -30,20 +34,28 @@ namespace ServiceLayer
         /// <param name="domain">The domain</param>
         public void AddDomain(Domain domain)
         {
-            if (domain == null)
-                throw new ArgumentNullException(nameof(domain), "Domain cannot be null");
-
-            ValidateDomain(domain);
-
-            if (domain.Parent != null)
+            try
             {
-                var parentDomain = GetDomainById(domain.Parent.DomainId);
-                if (parentDomain == null)
-                    throw new InvalidOperationException($"Parent domain with ID {domain.Parent.DomainId} not found");
-            }
+                if (domain == null)
+                    throw new ArgumentNullException(nameof(domain), "Domain cannot be null");
 
-            _domainRepository.Add(domain);
-            _domainRepository.SaveChanges();
+                ValidateDomain(domain);
+
+                if (domain.Parent != null)
+                {
+                    var parentDomain = GetDomainById(domain.Parent.DomainId);
+                    if (parentDomain == null)
+                        throw new InvalidOperationException($"Parent domain with ID {domain.Parent.DomainId} not found");
+                }
+
+                _domainRepository.Add(domain);
+                _domainRepository.SaveChanges();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error adding domain: {Name}", domain?.Name);
+                throw;
+            }
         }
 
         /// <summary>
@@ -52,26 +64,34 @@ namespace ServiceLayer
         /// <param name="domain">The domain</param>
         public void UpdateDomain(Domain domain)
         {
-            if (domain == null)
-                throw new ArgumentNullException(nameof(domain), "Domain cannot be null");
-
-            var existingDomain = GetDomainById(domain.DomainId);
-            if (existingDomain == null)
-                throw new InvalidOperationException($"Domain with ID {domain.DomainId} not found");
-
-            ValidateDomain(domain);
-
-            if (domain.Parent != null && domain.Parent.DomainId == domain.DomainId)
-                throw new InvalidOperationException("Domain cannot be its own parent");
-
-            if (domain.Parent != null)
+            try
             {
-                if (_domainRepository.IsAncestor(domain.DomainId, domain.Parent.DomainId))
-                    throw new InvalidOperationException("Cannot set parent to a descendant domain (circular reference)");
-            }
+                if (domain == null)
+                    throw new ArgumentNullException(nameof(domain), "Domain cannot be null");
 
-            _domainRepository.Update(domain);
-            _domainRepository.SaveChanges();
+                var existingDomain = GetDomainById(domain.DomainId);
+                if (existingDomain == null)
+                    throw new InvalidOperationException($"Domain with ID {domain.DomainId} not found");
+
+                ValidateDomain(domain);
+
+                if (domain.Parent != null && domain.Parent.DomainId == domain.DomainId)
+                    throw new InvalidOperationException("Domain cannot be its own parent");
+
+                if (domain.Parent != null)
+                {
+                    if (_domainRepository.IsAncestor(domain.DomainId, domain.Parent.DomainId))
+                        throw new InvalidOperationException("Cannot set parent to a descendant domain (circular reference)");
+                }
+
+                _domainRepository.Update(domain);
+                _domainRepository.SaveChanges();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating domain with ID: {DomainId}", domain?.DomainId);
+                throw;
+            }
         }
 
         /// <summary>
@@ -81,7 +101,15 @@ namespace ServiceLayer
         /// <returns>The domain if found</returns>
         public Domain GetDomainById(int domainId)
         {
-            return _domainRepository.GetById(domainId);
+            try
+            {
+                return _domainRepository.GetById(domainId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving domain with ID: {DomainId}", domainId);
+                throw;
+            }
         }
 
         /// <summary>
@@ -90,7 +118,15 @@ namespace ServiceLayer
         /// <returns>List of all domains</returns>
         public IList<Domain> GetAllDomains()
         {
-            return _domainRepository.GetAll();
+            try
+            {
+                return _domainRepository.GetAll();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving all domains");
+                throw;
+            }
         }
 
         /// <summary>
@@ -99,19 +135,27 @@ namespace ServiceLayer
         /// <param name="domainId">The domain identifier</param>
         public void DeleteDomain(int domainId)
         {
-            var domain = GetDomainById(domainId);
-            if (domain == null)
-                throw new InvalidOperationException($"Domain with ID {domainId} not found");
+            try
+            {
+                var domain = GetDomainById(domainId);
+                if (domain == null)
+                    throw new InvalidOperationException($"Domain with ID {domainId} not found");
 
-            if (domain.Books?.Any() == true)
-                throw new InvalidOperationException("Cannot delete domain with associated books");
+                if (domain.Books?.Any() == true)
+                    throw new InvalidOperationException("Cannot delete domain with associated books");
 
-            var descendants = _domainRepository.GetDescendants(domainId);
-            if (descendants.Any())
-                throw new InvalidOperationException("Cannot delete domain with child domains");
+                var descendants = _domainRepository.GetDescendants(domainId);
+                if (descendants.Any())
+                    throw new InvalidOperationException("Cannot delete domain with child domains");
 
-            _domainRepository.Delete(domainId);
-            _domainRepository.SaveChanges();
+                _domainRepository.Delete(domainId);
+                _domainRepository.SaveChanges();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting domain with ID: {DomainId}", domainId);
+                throw;
+            }
         }
 
         /// <summary>
@@ -120,7 +164,15 @@ namespace ServiceLayer
         /// <returns>List of root domains</returns>
         public IList<Domain> GetRootDomains()
         {
-            return _domainRepository.GetRootDomains();
+            try
+            {
+                return _domainRepository.GetRootDomains();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving all copies");
+                throw;
+            }
         }
 
         /// <summary>

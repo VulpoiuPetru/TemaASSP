@@ -44,7 +44,18 @@ namespace MyConsoleApplication.OnStart
             // Add DbContext
             services.AddScoped<LibraryContext>();
 
-            return services.BuildServiceProvider();
+            var serviceProvider = services.BuildServiceProvider();
+
+            using (var scope = serviceProvider.CreateScope())
+            {
+                var context = scope.ServiceProvider.GetRequiredService<LibraryContext>();
+                context.Database.Initialize(force: false); // Creează DB dacă nu există
+                Console.WriteLine("Database initialized!");
+            }
+
+            return serviceProvider;
+
+            //return services.BuildServiceProvider();
         }
         private static void ConfigureLogging()
         {

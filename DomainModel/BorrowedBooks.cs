@@ -52,5 +52,7 @@ namespace DomainModel
         /// </summary>
         [Required(ErrorMessage = "A reader that borrows a book is needed")]
         public virtual Reader Reader { get; set; }
+
+        public virtual ICollection<Extension> Extensions { get; set; }
     }
 }

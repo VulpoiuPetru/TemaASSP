@@ -1,5 +1,6 @@
 ﻿using DataMapper.RepoInterfaces;
 using DomainModel;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,18 +16,22 @@ namespace ServiceLayer
     {
         private readonly IExtensionRepository _extensionRepository;
         private readonly IBorrowedBooksRepository _borrowedBooksRepository;
+        private readonly ILogger<ExtensionService> _logger;
 
         /// <summary>
         /// Initializes a new instance of the ExtensionService class
         /// </summary>
         /// <param name="extensionRepository">Extension repository</param>
         /// <param name="borrowedBooksRepository">Borrowed books repository</param>
+        /// <param name="logger">Logger instance</param> 
         public ExtensionService(
             IExtensionRepository extensionRepository,
-            IBorrowedBooksRepository borrowedBooksRepository)
+            IBorrowedBooksRepository borrowedBooksRepository,
+            ILogger<ExtensionService> logger)
         {
             _extensionRepository = extensionRepository ?? throw new ArgumentNullException(nameof(extensionRepository));
             _borrowedBooksRepository = borrowedBooksRepository ?? throw new ArgumentNullException(nameof(borrowedBooksRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         /// <summary>
@@ -53,14 +58,23 @@ namespace ServiceLayer
         /// <param name="extension">The extension</param>
         public void UpdateExtension(Extension extension)
         {
-            if (extension == null)
-                throw new ArgumentNullException(nameof(extension), "Extension cannot be null");
-            var existingExtension = GetExtensionById(extension.ExtensionId);
-            if (existingExtension == null)
-                throw new InvalidOperationException($"Extension with ID {extension.ExtensionId} not found");
-            ValidateExtension(extension);
+            try
+            {
+                if (extension == null)
+                    throw new ArgumentNullException(nameof(extension), "Extension cannot be null");
+                var existingExtension = GetExtensionById(extension.ExtensionId);
+                if (existingExtension == null)
+                    throw new InvalidOperationException($"Extension with ID {extension.ExtensionId} not found");
+                ValidateExtension(extension);
 
-            _extensionRepository.Update(extension);
+                _extensionRepository.Update(extension);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error adding extension for BookId: {BookId}, ReaderId: {ReaderId}",
+                    extension?.BookId, extension?.ReaderId);
+                throw;
+            }
         }
 
         /// <summary>
@@ -70,7 +84,14 @@ namespace ServiceLayer
         /// <returns>The extension if found</returns>
         public Extension GetExtensionById(int extensionId)
         {
-            return _extensionRepository.GetById(extensionId);
+            try
+            {
+                return _extensionRepository.GetById(extensionId);
+            }
+            catch (Exception ex) {
+                _logger.LogError(ex, "Error retrieving extension with ID: {ExtensionId}", extensionId);
+                throw;
+            }
         }
 
         /// <summary>
@@ -79,7 +100,15 @@ namespace ServiceLayer
         /// <returns>List of all extensions</returns>
         public IList<Extension> GetAllExtensions()
         {
-            return _extensionRepository.GetAll();
+            try
+            {
+                return _extensionRepository.GetAll();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving all extensions");
+                throw;
+            }
         }
 
         /// <summary>
@@ -88,11 +117,19 @@ namespace ServiceLayer
         /// <param name="extensionId">The extension identifier</param>
         public void DeleteExtension(int extensionId)
         {
-            var extension = GetExtensionById(extensionId);
-            if (extension == null)
-                throw new InvalidOperationException($"Extension with ID {extensionId} not found");
+            try
+            {
+                var extension = GetExtensionById(extensionId);
+                if (extension == null)
+                    throw new InvalidOperationException($"Extension with ID {extensionId} not found");
 
-            _extensionRepository.Delete(extensionId);
+                _extensionRepository.Delete(extensionId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting extension with ID: {ExtensionId}", extensionId);
+                throw;
+            }
         }
 
         /// <summary>
@@ -102,7 +139,15 @@ namespace ServiceLayer
         /// <returns>List of extensions for the reader</returns>
         public IList<Extension> GetByReaderId(int readerId)
         {
-            return _extensionRepository.GetByReaderId(readerId);
+            try
+            {
+                return _extensionRepository.GetByReaderId(readerId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting extension with ID: {ReaderId}", readerId);
+                throw;
+            }
         }
 
         /// <summary>

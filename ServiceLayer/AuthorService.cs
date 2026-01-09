@@ -1,5 +1,6 @@
 ﻿using DataMapper.RepoInterfaces;
 using DomainModel;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,14 +15,17 @@ namespace ServiceLayer
     public class AuthorService : IAuthorService
     {
         private readonly IAuthorRepository _authorRepository;
+        private readonly ILogger<AuthorService> _logger;
 
         /// <summary>
         /// Initializes a new instance of the AuthorService class
         /// </summary>
         /// <param name="authorRepository">Author repository</param>
-        public AuthorService(IAuthorRepository authorRepository)
+        /// <param name="logger">Logger instance</param>
+        public AuthorService(IAuthorRepository authorRepository, ILogger<AuthorService> logger)
         {
             _authorRepository = authorRepository ?? throw new ArgumentNullException(nameof(authorRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         /// <summary>
@@ -30,13 +34,21 @@ namespace ServiceLayer
         /// <param name="author">The author</param>
         public void AddAuthor(Author author)
         {
-            if (author == null)
-                throw new ArgumentNullException(nameof(author), "Author cannot be null");
+            try
+            {
+                if (author == null)
+                    throw new ArgumentNullException(nameof(author), "Author cannot be null");
 
-            ValidateAuthor(author);
+                ValidateAuthor(author);
 
-            _authorRepository.Add(author);
-            _authorRepository.SaveChanges();
+                _authorRepository.Add(author);
+                _authorRepository.SaveChanges();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error adding author: {FirstName} {LastName}", author?.FirstName, author?.LastName);
+                throw;
+            }
         }
 
         /// <summary>
@@ -45,17 +57,25 @@ namespace ServiceLayer
         /// <param name="author">The author</param>
         public void UpdateAuthor(Author author)
         {
-            if (author == null)
-                throw new ArgumentNullException(nameof(author), "Author cannot be null");
+            try
+            {
+                if (author == null)
+                    throw new ArgumentNullException(nameof(author), "Author cannot be null");
 
-            var existingAuthor = GetAuthorById(author.AuthorId);
-            if (existingAuthor == null)
-                throw new InvalidOperationException($"Author with ID {author.AuthorId} not found");
+                var existingAuthor = GetAuthorById(author.AuthorId);
+                if (existingAuthor == null)
+                    throw new InvalidOperationException($"Author with ID {author.AuthorId} not found");
 
-            ValidateAuthor(author);
+                ValidateAuthor(author);
 
-            _authorRepository.Update(author);
-            _authorRepository.SaveChanges();
+                _authorRepository.Update(author);
+                _authorRepository.SaveChanges();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating author with ID: {AuthorId}", author?.AuthorId);
+                throw;
+            }
         }
 
         /// <summary>
@@ -65,7 +85,15 @@ namespace ServiceLayer
         /// <returns>The author if found</returns>
         public Author GetAuthorById(int authorId)
         {
-            return _authorRepository.GetById(authorId);
+            try
+            {
+                return _authorRepository.GetById(authorId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving author with ID: {AuthorId}", authorId);
+                throw;
+            }
         }
 
         /// <summary>
@@ -74,7 +102,15 @@ namespace ServiceLayer
         /// <returns>List of all authors</returns>
         public IList<Author> GetAllAuthors()
         {
-            return _authorRepository.GetAll();
+            try
+            {
+                return _authorRepository.GetAll();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving all authors");
+                throw;
+            }
         }
 
         /// <summary>
@@ -83,15 +119,23 @@ namespace ServiceLayer
         /// <param name="authorId">The author identifier</param>
         public void DeleteAuthor(int authorId)
         {
-            var author = GetAuthorById(authorId);
-            if (author == null)
-                throw new InvalidOperationException($"Author with ID {authorId} not found");
+            try
+            {
+                var author = GetAuthorById(authorId);
+                if (author == null)
+                    throw new InvalidOperationException($"Author with ID {authorId} not found");
 
-            if (author.Books?.Any() == true)
-                throw new InvalidOperationException("Cannot delete author with associated books");
+                if (author.Books?.Any() == true)
+                    throw new InvalidOperationException("Cannot delete author with associated books");
 
-            _authorRepository.Delete(authorId);
-            _authorRepository.SaveChanges();
+                _authorRepository.Delete(authorId);
+                _authorRepository.SaveChanges();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting author with ID: {AuthorId}", authorId);
+                throw;
+            }
         }
 
         /// <summary>
