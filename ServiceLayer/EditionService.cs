@@ -1,5 +1,6 @@
 ﻿using DataMapper.RepoInterfaces;
 using DomainModel;
+using FluentValidation;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -17,6 +18,7 @@ namespace ServiceLayer
         private readonly IEditionRepository _editionRepository;
         private readonly IBookRepository _bookRepository;
         private readonly ILogger<EditionService> _logger;
+        private readonly IValidator<Edition> _validator;
 
         /// <summary>
         /// Initializes a new instance of the EditionService class
@@ -24,11 +26,13 @@ namespace ServiceLayer
         /// <param name="editionRepository">Edition repository</param>
         /// <param name="bookRepository">Book repository</param>
         /// <param name="logger">Logger instance</param>
-        public EditionService(IEditionRepository editionRepository, IBookRepository bookRepository, ILogger<EditionService> logger)
+        /// <param name="validator">FluentValidation validator for Edition</param>
+        public EditionService(IEditionRepository editionRepository, IBookRepository bookRepository, ILogger<EditionService> logger, IValidator<Edition> validator)
         {
             _editionRepository = editionRepository ?? throw new ArgumentNullException(nameof(editionRepository));
             _bookRepository = bookRepository ?? throw new ArgumentNullException(nameof(bookRepository));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _validator = validator ?? throw new ArgumentNullException(nameof(validator));
         }
 
         /// <summary>
@@ -53,6 +57,7 @@ namespace ServiceLayer
 
                 _editionRepository.Add(edition);
                 _editionRepository.SaveChanges();
+                _logger.LogInformation("Edition added successfully: Publisher {Publisher}, Year {Year}", edition.Publisher, edition.YearOfPublishing);
             }
             catch (Exception ex)
             {
@@ -81,6 +86,8 @@ namespace ServiceLayer
 
                 _editionRepository.Update(edition);
                 _editionRepository.SaveChanges();
+
+                _logger.LogInformation("Edition updated successfully: ID {EditionId}", edition.EditionId);
             }
             catch (Exception ex)
             {
@@ -133,6 +140,8 @@ namespace ServiceLayer
 
                 _editionRepository.Delete(editionId);
                 _editionRepository.SaveChanges();
+
+                _logger.LogInformation("Edition deleted successfully: ID {EditionId}", editionId);
             }
             catch (Exception ex)
             {

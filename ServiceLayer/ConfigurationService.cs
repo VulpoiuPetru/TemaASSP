@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Configuration;
 using DomainModel;
 
 namespace ServiceLayer
@@ -17,24 +18,46 @@ namespace ServiceLayer
         private readonly LibraryConfiguration _config;
 
         /// <summary>
-        /// Initializes a new instance of the ConfigurationService class with default values
+        /// Initializes a new instance of the ConfigurationService class
+        /// Reads configuration from app.config/web.config
         /// </summary>
         public ConfigurationService()
         {
-            // Default configuration values (can be loaded from file later)
             _config = new LibraryConfiguration
             {
-                DOMENII = 5,
-                NMC = 10,
-                PER = 30,
-                C = 5,
-                D = 3,
-                L = 6,
-                LIM = 15,
-                DELTA = 14,
-                NCZ = 3,
-                PERSIMP = 20
+                DOMENII = GetConfigValue("DOMENII", 5),
+                NMC = GetConfigValue("NMC", 10),
+                PER = GetConfigValue("PER", 30),
+                C = GetConfigValue("C", 5),
+                D = GetConfigValue("D", 3),
+                L = GetConfigValue("L", 6),
+                LIM = GetConfigValue("LIM", 15),
+                DELTA = GetConfigValue("DELTA", 14),
+                NCZ = GetConfigValue("NCZ", 3),
+                PERSIMP = GetConfigValue("PERSIMP", 20)
             };
+        }
+
+        /// <summary>
+        /// Reads an integer value from app.config with a default fallback
+        /// </summary>
+        /// <param name="key">Configuration key</param>
+        /// <param name="defaultValue">Default value if key not found or invalid</param>
+        /// <returns>Configuration value or default</returns>
+        private int GetConfigValue(string key, int defaultValue)
+        {
+            try
+            {
+                var value = System.Configuration.ConfigurationManager.AppSettings[key];
+                if (string.IsNullOrWhiteSpace(value))
+                    return defaultValue;
+
+                return int.TryParse(value, out var result) ? result : defaultValue;
+            }
+            catch
+            {
+                return defaultValue;
+            }
         }
 
         /// <summary>

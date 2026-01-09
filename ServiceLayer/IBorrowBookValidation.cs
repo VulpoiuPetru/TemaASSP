@@ -80,5 +80,8 @@ namespace ServiceLayer
         /// <param name="extensionDays">Number of days to extend</param>
         /// <returns>True if the extension is valid, false otherwise</returns>
         bool ValidateExtensionRequest(BorrowedBooks borrowedBook, int extensionDays);
+
+
+        bool ValidateStaffDailyLendingLimit(Reader staffMember, int booksToLend);
     }
 }

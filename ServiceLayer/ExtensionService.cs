@@ -1,5 +1,6 @@
 ﻿using DataMapper.RepoInterfaces;
 using DomainModel;
+using FluentValidation;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -17,6 +18,7 @@ namespace ServiceLayer
         private readonly IExtensionRepository _extensionRepository;
         private readonly IBorrowedBooksRepository _borrowedBooksRepository;
         private readonly ILogger<ExtensionService> _logger;
+        private readonly IValidator<Extension> _validator;
 
         /// <summary>
         /// Initializes a new instance of the ExtensionService class
@@ -24,14 +26,17 @@ namespace ServiceLayer
         /// <param name="extensionRepository">Extension repository</param>
         /// <param name="borrowedBooksRepository">Borrowed books repository</param>
         /// <param name="logger">Logger instance</param> 
+        /// <param name="validator">FluentValidation validator for Extension</param>
         public ExtensionService(
             IExtensionRepository extensionRepository,
             IBorrowedBooksRepository borrowedBooksRepository,
-            ILogger<ExtensionService> logger)
+            ILogger<ExtensionService> logger,
+            IValidator<Extension> validator)
         {
             _extensionRepository = extensionRepository ?? throw new ArgumentNullException(nameof(extensionRepository));
             _borrowedBooksRepository = borrowedBooksRepository ?? throw new ArgumentNullException(nameof(borrowedBooksRepository));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _validator = validator ?? throw new ArgumentNullException(nameof(validator));
         }
 
         /// <summary>
@@ -40,16 +45,28 @@ namespace ServiceLayer
         /// <param name="extension">The extension</param>
         public void AddExtension(Extension extension)
         {
-            if (extension == null)
-                throw new ArgumentNullException(nameof(extension), "Extension cannot be null");
+            try
+            {
+                if (extension == null)
+                    throw new ArgumentNullException(nameof(extension), "Extension cannot be null");
 
-            ValidateExtension(extension);
+                ValidateExtension(extension);
 
-            var borrowedBook = _borrowedBooksRepository.GetByIds(extension.BookId, extension.ReaderId);
-            if (borrowedBook == null)
-                throw new InvalidOperationException("Borrowed book record not found");
+                var borrowedBook = _borrowedBooksRepository.GetByIds(extension.BookId, extension.ReaderId);
+                if (borrowedBook == null)
+                    throw new InvalidOperationException("Borrowed book record not found");
 
-            _extensionRepository.Add(extension);
+                _extensionRepository.Add(extension);
+
+                _logger.LogInformation("Extension added successfully for BookId: {BookId}, ReaderId: {ReaderId}",
+                    extension.BookId, extension.ReaderId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error adding extension for BookId: {BookId}, ReaderId: {ReaderId}",
+                    extension?.BookId, extension?.ReaderId);
+                throw;
+            }
         }
 
         /// <summary>
@@ -68,6 +85,8 @@ namespace ServiceLayer
                 ValidateExtension(extension);
 
                 _extensionRepository.Update(extension);
+
+                _logger.LogInformation("Extension updated successfully: ID {ExtensionId}", extension.ExtensionId);
             }
             catch (Exception ex)
             {
@@ -124,6 +143,8 @@ namespace ServiceLayer
                     throw new InvalidOperationException($"Extension with ID {extensionId} not found");
 
                 _extensionRepository.Delete(extensionId);
+
+                _logger.LogInformation("Extension deleted successfully: ID {ExtensionId}", extensionId);
             }
             catch (Exception ex)
             {
@@ -157,7 +178,15 @@ namespace ServiceLayer
         /// <returns>List of extensions for the book</returns>
         public IList<Extension> GetByBookId(int bookId)
         {
-            return _extensionRepository.GetByBookId(bookId);
+            try
+            {
+                return _extensionRepository.GetByBookId(bookId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving extensions for book ID: {BookId}", bookId);
+                throw;
+            }
         }
 
         /// <summary>
@@ -168,10 +197,18 @@ namespace ServiceLayer
         /// <returns>Total extension days</returns>
         public int GetTotalExtensionDaysForReaderInLastMonths(int readerId, int months)
         {
-            if (months < 1)
-                throw new ArgumentException("Months must be at least 1");
+            try
+            {
+                if (months < 1)
+                    throw new ArgumentException("Months must be at least 1");
 
-            return _extensionRepository.GetTotalExtensionDaysForReaderInLastMonths(readerId, months);
+                return _extensionRepository.GetTotalExtensionDaysForReaderInLastMonths(readerId, months);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving total extension days for reader ID: {ReaderId}", readerId);
+                throw;
+            }
         }
 
         /// <summary>

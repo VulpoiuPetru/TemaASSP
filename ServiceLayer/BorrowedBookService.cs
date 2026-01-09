@@ -19,6 +19,7 @@ namespace ServiceLayer
         private readonly IReaderService _readerService;
         private readonly IBorrowedBooksRepository _borrowedBooksRepository;
         private readonly IExtensionRepository _extensionRepository;
+        private readonly IConfigurationService _configService;
         private readonly ILogger<BorrowedBookService> _logger;
 
         /// <summary>
@@ -97,6 +98,16 @@ namespace ServiceLayer
 
                 if (!_borrowValidation.ValidateBorrowSameBookInPeriod(books, reader))
                     throw new InvalidOperationException("Cannot borrow the same book within the specified interval");
+
+                if (reader.IsEmployee)
+                {
+                    if (!_borrowValidation.ValidateStaffDailyLendingLimit(reader, books.Count))
+                    {
+                        var config = _configService.GetConfiguration();
+                        throw new InvalidOperationException($"Staff member exceeds daily lending limit (PERSIMP: {config.PERSIMP})");
+                    }
+                }
+
 
                 // Create borrowed book records
                 var borrowDate = DateTime.Now;

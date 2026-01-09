@@ -1,5 +1,6 @@
 ﻿using DataMapper.RepoInterfaces;
 using DomainModel;
+using FluentValidation;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -16,16 +17,19 @@ namespace ServiceLayer
     {
         private readonly IDomainRepository _domainRepository;
         private readonly ILogger<DomainService> _logger;
+        private readonly IValidator<Domain> _validator;
 
         /// <summary>
         /// Initializes a new instance of the DomainService class
         /// </summary>
         /// <param name="domainRepository">Domain repository</param>
         /// <param name="logger">Logger instance</param>
-        public DomainService(IDomainRepository domainRepository, ILogger<DomainService> logger)
+        /// <param name="validator">FluentValidation validator for Domain</param>
+        public DomainService(IDomainRepository domainRepository, ILogger<DomainService> logger, IValidator<Domain> validator)
         {
             _domainRepository = domainRepository ?? throw new ArgumentNullException(nameof(domainRepository));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _validator = validator ?? throw new ArgumentNullException(nameof(validator));
         }
 
         /// <summary>
@@ -50,6 +54,8 @@ namespace ServiceLayer
 
                 _domainRepository.Add(domain);
                 _domainRepository.SaveChanges();
+
+                _logger.LogInformation("Domain added successfully: {Name}", domain.Name);
             }
             catch (Exception ex)
             {
@@ -86,6 +92,8 @@ namespace ServiceLayer
 
                 _domainRepository.Update(domain);
                 _domainRepository.SaveChanges();
+
+                _logger.LogInformation("Domain updated successfully: ID {DomainId}", domain.DomainId);
             }
             catch (Exception ex)
             {
@@ -150,6 +158,8 @@ namespace ServiceLayer
 
                 _domainRepository.Delete(domainId);
                 _domainRepository.SaveChanges();
+
+                _logger.LogInformation("Domain deleted successfully: ID {DomainId}", domainId);
             }
             catch (Exception ex)
             {

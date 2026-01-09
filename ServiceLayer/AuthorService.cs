@@ -1,5 +1,6 @@
 ﻿using DataMapper.RepoInterfaces;
 using DomainModel;
+using FluentValidation;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -16,16 +17,19 @@ namespace ServiceLayer
     {
         private readonly IAuthorRepository _authorRepository;
         private readonly ILogger<AuthorService> _logger;
+        private readonly IValidator<Author> _validator;
 
         /// <summary>
         /// Initializes a new instance of the AuthorService class
         /// </summary>
         /// <param name="authorRepository">Author repository</param>
         /// <param name="logger">Logger instance</param>
-        public AuthorService(IAuthorRepository authorRepository, ILogger<AuthorService> logger)
+        /// <param name="validator">FluentValidation validator for Author</param>
+        public AuthorService(IAuthorRepository authorRepository, ILogger<AuthorService> logger, IValidator<Author> validator)
         {
             _authorRepository = authorRepository ?? throw new ArgumentNullException(nameof(authorRepository));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _validator = validator ?? throw new ArgumentNullException(nameof(validator));
         }
 
         /// <summary>
@@ -43,6 +47,8 @@ namespace ServiceLayer
 
                 _authorRepository.Add(author);
                 _authorRepository.SaveChanges();
+
+                _logger.LogInformation("Author added successfully: {FirstName} {LastName}", author.FirstName, author.LastName);
             }
             catch (Exception ex)
             {
@@ -70,6 +76,8 @@ namespace ServiceLayer
 
                 _authorRepository.Update(author);
                 _authorRepository.SaveChanges();
+
+                _logger.LogInformation("Author updated successfully: ID {AuthorId}", author.AuthorId);
             }
             catch (Exception ex)
             {
@@ -130,6 +138,8 @@ namespace ServiceLayer
 
                 _authorRepository.Delete(authorId);
                 _authorRepository.SaveChanges();
+
+                _logger.LogInformation("Author deleted successfully: ID {AuthorId}", authorId);
             }
             catch (Exception ex)
             {

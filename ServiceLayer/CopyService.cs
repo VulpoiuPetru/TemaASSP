@@ -1,5 +1,6 @@
 ﻿using DataMapper.RepoInterfaces;
 using DomainModel;
+using FluentValidation;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -17,6 +18,7 @@ namespace ServiceLayer
         private readonly ICopyRepository _copyRepository;
         private readonly IEditionRepository _editionRepository;
         private readonly ILogger<CopyService> _logger;
+        private readonly IValidator<Copy> _validator;
 
         /// <summary>
         /// Initializes a new instance of the CopyService class
@@ -24,14 +26,17 @@ namespace ServiceLayer
         /// <param name="copyRepository">Copy repository</param>
         /// <param name="editionRepository">Edition repository</param>
         /// <param name="logger">Logger instance</param>
+        /// <param name="validator">FluentValidation validator for Copy</param>
         public CopyService(
             ICopyRepository copyRepository,
             IEditionRepository editionRepository,
-            ILogger<CopyService> logger)
+            ILogger<CopyService> logger,
+            IValidator<Copy> validator)
         {
             _copyRepository = copyRepository ?? throw new ArgumentNullException(nameof(copyRepository));
             _editionRepository = editionRepository ?? throw new ArgumentNullException(nameof(editionRepository));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _validator = validator ?? throw new ArgumentNullException(nameof(validator));
         }
 
         /// <summary>
@@ -55,6 +60,8 @@ namespace ServiceLayer
                 }
 
                 _copyRepository.Add(copy);
+
+                _logger.LogInformation("Copy added successfully for edition ID: {EditionId}", copy.Edition?.EditionId);
             }
             catch (Exception ex)
             {
@@ -81,6 +88,8 @@ namespace ServiceLayer
                 ValidateCopy(copy);
 
                 _copyRepository.Update(copy);
+
+                _logger.LogInformation("Copy updated successfully: ID {CopyId}", copy.Id);
             }
             catch (Exception ex)
             {
@@ -132,6 +141,8 @@ namespace ServiceLayer
                     throw new InvalidOperationException("Cannot delete copy that is currently borrowed");
 
                 _copyRepository.Delete(id);
+
+                _logger.LogInformation("Copy deleted successfully: ID {CopyId}", id);
             }
             catch (Exception ex)
             {
@@ -166,18 +177,28 @@ namespace ServiceLayer
         /// <param name="copyId">The copy identifier</param>
         public void MarkAsBorrowed(int copyId)
         {
-            var copy = GetCopyById(copyId);
-            if (copy == null)
-                throw new InvalidOperationException($"Copy with ID {copyId} not found");
+            try
+            {
+                var copy = GetCopyById(copyId);
+                if (copy == null)
+                    throw new InvalidOperationException($"Copy with ID {copyId} not found");
 
-            if (!copy.IsAvailable)
-                throw new InvalidOperationException("Copy is already borrowed");
+                if (!copy.IsAvailable)
+                    throw new InvalidOperationException("Copy is already borrowed");
 
-            if (copy.IsReadingRoomOnly)
-                throw new InvalidOperationException("Reading room only copies cannot be borrowed");
+                if (copy.IsReadingRoomOnly)
+                    throw new InvalidOperationException("Reading room only copies cannot be borrowed");
 
-            copy.IsAvailable = false;
-            UpdateCopy(copy);
+                copy.IsAvailable = false;
+                UpdateCopy(copy);
+
+                _logger.LogInformation("Copy marked as borrowed: ID {CopyId}", copyId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error marking copy as borrowed: ID {CopyId}", copyId);
+                throw;
+            }
         }
 
         /// <summary>
@@ -186,15 +207,24 @@ namespace ServiceLayer
         /// <param name="copyId">The copy identifier</param>
         public void MarkAsReturned(int copyId)
         {
-            var copy = GetCopyById(copyId);
-            if (copy == null)
-                throw new InvalidOperationException($"Copy with ID {copyId} not found");
+            try
+            {
+                var copy = GetCopyById(copyId);
+                if (copy == null)
+                    throw new InvalidOperationException($"Copy with ID {copyId} not found");
 
-            if (copy.IsAvailable)
-                throw new InvalidOperationException("Copy is already available");
+                if (copy.IsAvailable)
+                    throw new InvalidOperationException("Copy is already available");
 
-            copy.IsAvailable = true;
-            UpdateCopy(copy);
+                copy.IsAvailable = true;
+                UpdateCopy(copy);
+                _logger.LogInformation("Copy marked as returned: ID {CopyId}", copyId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error marking copy as returned: ID {CopyId}", copyId);
+                throw;
+            }
         }
 
         /// <summary>

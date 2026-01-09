@@ -220,5 +220,29 @@ namespace ServiceLayer
 
             return totalWithCurrent <= limits.LIM;
         }
+
+        /// <summary>
+        /// Function to validate that staff member hasn't exceeded daily lending limit (PERSIMP)
+        /// </summary>
+        /// <param name="staffMember">The staff member doing the lending</param>
+        /// <param name="booksToLend">Number of books to lend in this transaction</param>
+        /// <returns>True if within limits</returns>
+        public bool ValidateStaffDailyLendingLimit(Reader staffMember, int booksToLend)
+        {
+            if (!staffMember.IsEmployee)
+                return true; // Not staff, rule doesn't apply
+
+            var config = _configService.GetConfiguration();
+
+            // Count books lent TODAY by this staff member
+            var today = DateTime.Today;
+            var tomorrow = today.AddDays(1);
+
+            var todayLentByStaff = _borrowedBooksRepository
+                .GetByReaderAndDateRange(staffMember.ReaderId, today, tomorrow)
+                .Count;
+
+            return (todayLentByStaff + booksToLend) <= config.PERSIMP;
+        }
     }
 }

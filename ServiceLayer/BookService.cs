@@ -1,5 +1,6 @@
 ﻿using DataMapper.RepoInterfaces;
 using DomainModel;
+using FluentValidation;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -18,6 +19,7 @@ namespace ServiceLayer
         private readonly IBookRepository _bookRepository;
         private readonly IDomainRepository _domainRepository;
         private readonly ILogger<BookService> _logger;
+        private readonly IValidator<Book> _validator;
 
         /// <summary>
         /// Initializes a new instance of the BookService class
@@ -26,16 +28,19 @@ namespace ServiceLayer
         /// <param name="bookRepository">Book repository</param>
         /// <param name="domainRepository">Domain repository</param>
         /// <param name="logger">Logger instance</param>
+        /// <param name="validator">FluentValidation validator for Book</param>
         public BookService(
             IConfigurationService configService,
             IBookRepository bookRepository,
             IDomainRepository domainRepository,
-            ILogger<BookService> logger)
+            ILogger<BookService> logger,
+            IValidator<Book> validator)
         {
             _configService = configService ?? throw new ArgumentNullException(nameof(configService));
             _bookRepository = bookRepository ?? throw new ArgumentNullException(nameof(bookRepository));
             _domainRepository = domainRepository ?? throw new ArgumentNullException(nameof(domainRepository));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _validator = validator ?? throw new ArgumentNullException(nameof(validator));
         }
 
         /// <summary>
@@ -54,6 +59,8 @@ namespace ServiceLayer
 
                 _bookRepository.Add(book);
                 _bookRepository.SaveChanges();
+
+                _logger.LogInformation("Book added successfully: {Title}", book.Title);
             }
             catch (Exception ex)
             {
@@ -82,6 +89,8 @@ namespace ServiceLayer
 
                 _bookRepository.Update(book);
                 _bookRepository.SaveChanges();
+
+                _logger.LogInformation("Book updated successfully: ID {BookId}", book.BookId);
             }
             catch (Exception ex)
             {
@@ -142,6 +151,8 @@ namespace ServiceLayer
 
                 _bookRepository.Delete(bookId);
                 _bookRepository.SaveChanges();
+
+                _logger.LogInformation("Book deleted successfully: ID {BookId}", bookId);
             }
             catch (Exception ex)
             {
@@ -185,6 +196,8 @@ namespace ServiceLayer
 
                 _bookRepository.Update(book);
                 _bookRepository.SaveChanges();
+
+                _logger.LogInformation("Domains set for book ID {BookId}", bookId);
             }
             catch (Exception ex)
             {

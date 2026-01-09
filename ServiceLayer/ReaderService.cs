@@ -1,5 +1,7 @@
 ﻿using DataMapper.RepoInterfaces;
 using DomainModel;
+using FluentValidation;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,14 +16,20 @@ namespace ServiceLayer
     public class ReaderService : IReaderService
     {
         private readonly IReaderRepository _readerRepository;
+        private readonly ILogger<ReaderService> _logger;
+        private readonly IValidator<Reader> _validator;
 
         /// <summary>
         /// Initializes a new instance of the ReaderService class
         /// </summary>
         /// <param name="readerRepository">Reader repository</param>
-        public ReaderService(IReaderRepository readerRepository)
+        /// <param name="logger">Logger instance</param>
+        /// <param name="validator">FluentValidation validator for Reader</param>
+        public ReaderService(IReaderRepository readerRepository, ILogger<ReaderService> logger, IValidator<Reader> validator)
         {
             _readerRepository = readerRepository ?? throw new ArgumentNullException(nameof(readerRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _validator = validator ?? throw new ArgumentNullException(nameof(validator));
         }
 
         /// <summary>
@@ -30,18 +38,28 @@ namespace ServiceLayer
         /// <param name="reader">The reader</param>
         public void AddReader(Reader reader)
         {
-            if (reader == null)
-                throw new ArgumentNullException(nameof(reader), "Reader cannot be null");
+            try
+            {
+                if (reader == null)
+                    throw new ArgumentNullException(nameof(reader), "Reader cannot be null");
 
-            // Validate reader data
-            ValidateReader(reader);
+                // Validate reader data
+                ValidateReader(reader);
 
-            // Check for duplicate email/phone (business rule)
-            ValidateUniqueContact(reader);
+                // Check for duplicate email/phone (business rule)
+                ValidateUniqueContact(reader);
 
-            // Add to database
-            _readerRepository.Add(reader);
-            _readerRepository.SaveChanges();
+                // Add to database
+                _readerRepository.Add(reader);
+                _readerRepository.SaveChanges();
+
+                _logger.LogInformation("Reader added successfully: {FirstName} {LastName}", reader.FirstName, reader.LastName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error adding reader: {FirstName} {LastName}", reader?.FirstName, reader?.LastName);
+                throw;
+            }
         }
 
         /// <summary>
@@ -50,22 +68,32 @@ namespace ServiceLayer
         /// <param name="reader">The reader</param>
         public void UpdateReader(Reader reader)
         {
-            if (reader == null)
-                throw new ArgumentNullException(nameof(reader), "Reader cannot be null");
+            try
+            {
+                if (reader == null)
+                    throw new ArgumentNullException(nameof(reader), "Reader cannot be null");
 
-            var existingReader = GetReaderById(reader.ReaderId);
-            if (existingReader == null)
-                throw new InvalidOperationException($"Reader with ID {reader.ReaderId} not found");
+                var existingReader = GetReaderById(reader.ReaderId);
+                if (existingReader == null)
+                    throw new InvalidOperationException($"Reader with ID {reader.ReaderId} not found");
 
-            // Validate updated reader data
-            ValidateReader(reader);
+                // Validate updated reader data
+                ValidateReader(reader);
 
-            // Check for duplicate contact info (excluding self)
-            ValidateUniqueContact(reader, excludeReaderId: reader.ReaderId);
+                // Check for duplicate contact info (excluding self)
+                ValidateUniqueContact(reader, excludeReaderId: reader.ReaderId);
 
-            // Update in database
-            _readerRepository.Update(reader);
-            _readerRepository.SaveChanges();
+                // Update in database
+                _readerRepository.Update(reader);
+                _readerRepository.SaveChanges();
+
+                _logger.LogInformation("Reader updated successfully: ID {ReaderId}", reader.ReaderId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating reader with ID: {ReaderId}", reader?.ReaderId);
+                throw;
+            }
         }
 
         /// <summary>
@@ -75,7 +103,15 @@ namespace ServiceLayer
         /// <returns>The reader if found</returns>
         public Reader GetReaderById(int readerId)
         {
-            return _readerRepository.GetById(readerId);
+            try
+            {
+                return _readerRepository.GetById(readerId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving reader with ID: {ReaderId}", readerId);
+                throw;
+            }
         }
 
         /// <summary>
@@ -84,7 +120,15 @@ namespace ServiceLayer
         /// <returns>List of all readers</returns>
         public IList<Reader> GetAllReaders()
         {
-            return _readerRepository.GetAll();
+            try
+            {
+                return _readerRepository.GetAll();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving all readers");
+                throw;
+            }
         }
 
         /// <summary>
@@ -93,16 +137,26 @@ namespace ServiceLayer
         /// <param name="readerId">The reader identifier</param>
         public void DeleteReader(int readerId)
         {
-            var reader = GetReaderById(readerId);
-            if (reader == null)
-                throw new InvalidOperationException($"Reader with ID {readerId} not found");
+            try
+            {
+                var reader = GetReaderById(readerId);
+                if (reader == null)
+                    throw new InvalidOperationException($"Reader with ID {readerId} not found");
 
-            // Check if reader has active borrows (business rule)
-            if (reader.BorrowedBooks?.Any(bb => bb.BorrowEndDate > DateTime.Now) == true)
-                throw new InvalidOperationException("Cannot delete reader with active borrows");
+                // Check if reader has active borrows (business rule)
+                if (reader.BorrowedBooks?.Any(bb => bb.BorrowEndDate > DateTime.Now) == true)
+                    throw new InvalidOperationException("Cannot delete reader with active borrows");
 
-            _readerRepository.Delete(readerId);
-            _readerRepository.SaveChanges();
+                _readerRepository.Delete(readerId);
+                _readerRepository.SaveChanges();
+
+                _logger.LogInformation("Reader deleted successfully: ID {ReaderId}", readerId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting reader with ID: {ReaderId}", readerId);
+                throw;
+            }
         }
 
         /// <summary>
