@@ -142,5 +142,19 @@ namespace TestDomainModel
             Assert.IsNotNull(this.borrowedBooks.Reader);
             Assert.AreEqual(1, this.borrowedBooks.Reader.ReaderId);
         }
+
+        [TestMethod]
+        public void TestExtensionsCanBeSet()
+        {
+            var extensions = new List<Extension>
+    {
+        new Extension()
+    };
+
+            this.borrowedBooks.Extensions = extensions;
+
+            Assert.IsNotNull(this.borrowedBooks.Extensions);
+            Assert.AreEqual(1, this.borrowedBooks.Extensions.Count);
+        }
     }
 }

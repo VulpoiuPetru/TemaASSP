@@ -59,4 +59,11 @@
     <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <Import Project="..\packages\coverlet.collector.6.0.4\build\netstandard2.0\coverlet.collector.targets" Condition="Exists('..\packages\coverlet.collector.6.0.4\build\netstandard2.0\coverlet.collector.targets')" />
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('..\packages\coverlet.collector.6.0.4\build\netstandard2.0\coverlet.collector.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\coverlet.collector.6.0.4\build\netstandard2.0\coverlet.collector.targets'))" />
+  </Target>
 </Project>

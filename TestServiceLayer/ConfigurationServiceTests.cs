@@ -204,5 +204,6 @@ namespace TestServiceLayer
             var config = _configService.GetConfiguration();
             Assert.IsTrue(config.PERSIMP > 0);
         }
+
     }
 }

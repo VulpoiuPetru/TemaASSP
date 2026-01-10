@@ -276,5 +276,29 @@ namespace TestServiceLayer
             _mockRepository.Verify(r => r.Delete(1), Times.Once);
             _mockRepository.Verify(r => r.SaveChanges(), Times.Once);
         }
+
+        [TestMethod]
+        [ExpectedException(typeof(Exception))]
+        public void TestGetAllAuthors_WhenRepositoryThrowsException_LogsAndRethrows()
+        {
+            _mockRepository
+                .Setup(r => r.GetAll())
+                .Throws(new Exception("Database error"));
+
+            _authorService.GetAllAuthors();
+        }
+
+        [TestMethod]
+        [ExpectedException(typeof(Exception))]
+        public void TestGetAuthorById_WhenRepositoryThrowsException_LogsAndRethrows()
+        {
+            _mockRepository
+                .Setup(r => r.GetById(It.IsAny<int>()))
+                .Throws(new Exception("Database error"));
+
+            _authorService.GetAuthorById(1);
+        }
+
+
     }
 }

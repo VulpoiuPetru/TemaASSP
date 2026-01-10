@@ -16,6 +16,7 @@ namespace DomainModel
         public Domain()
         {
             this.Books = new HashSet<Book>();
+            this.Subdomains = new HashSet<Domain>();
         }
 
         /// <summary>

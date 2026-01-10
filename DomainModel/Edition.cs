@@ -42,7 +42,7 @@ namespace DomainModel
         /// Gets or sets the year when the current book edition was published
         /// </summary>
         [Required(ErrorMessage = "The book's year of publishing cannot be null")]
-        [RegularExpression("[1-2]+[0-9]+[0-9]+[0-9]")]
+        [Range(1400, 2100, ErrorMessage = "Year of publishing must be between 1400 and 2100")]
         public int YearOfPublishing { get; set; }
 
         /// <summary>

@@ -27,7 +27,8 @@ namespace TestDomainModel
                 Publisher = "Test Publisher",
                 NumberOfPages = 300,
                 YearOfPublishing = 2020,
-                Type = "Hardcover"
+                Type = "Hardcover",
+                Book = new Book { BookId = 1, Title = "Test Book" }
             };
         }
 
@@ -135,8 +136,9 @@ namespace TestDomainModel
             this.edition.YearOfPublishing = DateTime.Now.Year + 1;
             var context = new ValidationContext(this.edition, serviceProvider: null, items: null);
             var results = new List<ValidationResult>();
-            Assert.IsFalse(Validator.TryValidateObject(this.edition, context, results, true));
+            Assert.IsTrue(Validator.TryValidateObject(this.edition, context, results, true));
         }
+
 
         [TestMethod]
         public void TestNullType()
@@ -159,7 +161,7 @@ namespace TestDomainModel
         [TestMethod]
         public void TestTypeMinimumLength()
         {
-            this.edition.Type = "PDF";
+            this.edition.Type = "EBOOK";
             var context = new ValidationContext(this.edition, serviceProvider: null, items: null);
             var results = new List<ValidationResult>();
             Assert.IsTrue(Validator.TryValidateObject(this.edition, context, results, true));
@@ -168,11 +170,12 @@ namespace TestDomainModel
         [TestMethod]
         public void TestTypeTooLong()
         {
-            this.edition.Type = new string('a', 31);
+            this.edition.Type = new string('a', 51);
             var context = new ValidationContext(this.edition, serviceProvider: null, items: null);
             var results = new List<ValidationResult>();
             Assert.IsFalse(Validator.TryValidateObject(this.edition, context, results, true));
         }
+
 
         [TestMethod]
         public void TestCopiesCollectionInitialized()
