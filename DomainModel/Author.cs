@@ -5,9 +5,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+
 namespace DomainModel
 {
-    public class Author
+   public class Author
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="Author" /> class
