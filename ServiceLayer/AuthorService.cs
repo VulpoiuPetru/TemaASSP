@@ -154,6 +154,25 @@ namespace ServiceLayer
         /// <param name="author">Author to validate</param>
         private void ValidateAuthor(Author author)
         {
+            // Try FluentValidation first (if configured to return a result)
+            if (_validator != null)
+            {
+                var result = _validator.Validate(author);
+                if (result != null)
+                {
+                    if (!result.IsValid)
+                    {
+                        var errors = string.Join("; ", result.Errors.Select(e => e.ErrorMessage));
+                        // Keep backward compatibility with tests that expect ArgumentException
+                        throw new ArgumentException(errors);
+                    }
+
+                    // Valid according to validator
+                    return;
+                }
+            }
+
+            // Fallback manual validation to avoid NullReferenceException from misconfigured mocks
             if (string.IsNullOrWhiteSpace(author.FirstName))
                 throw new ArgumentException("First name is required");
 

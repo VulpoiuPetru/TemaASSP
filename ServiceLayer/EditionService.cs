@@ -190,26 +190,13 @@ namespace ServiceLayer
         /// <param name="edition">Edition to validate</param>
         private void ValidateEdition(Edition edition)
         {
-            if (string.IsNullOrWhiteSpace(edition.Publisher))
-                throw new ArgumentException("Publisher name is required");
-
-            if (edition.Publisher.Length < 5 || edition.Publisher.Length > 50)
-                throw new ArgumentException("Publisher name must be between 5 and 50 characters");
-
-            if (edition.NumberOfPages < 3)
-                throw new ArgumentException("Number of pages must be at least 3");
-
-            if (edition.YearOfPublishing < 1000 || edition.YearOfPublishing > 2999)
-                throw new ArgumentException("Year of publishing must be between 1000 and 2999");
-
-            if (string.IsNullOrWhiteSpace(edition.Type))
-                throw new ArgumentException("Edition type is required");
-
-            if (edition.Type.Length < 5 || edition.Type.Length > 50)
-                throw new ArgumentException("Edition type must be between 5 and 50 characters");
-
-            if (edition.Book == null)
-                throw new ArgumentException("Edition must be associated with a book");
+            var result = _validator.Validate(edition);
+            if (!result.IsValid)
+            {
+                var errors = string.Join("; ", result.Errors.Select(e => e.ErrorMessage));
+                throw new ValidationException($"Edition validation failed: {errors}");
+            }
         }
+
     }
 }

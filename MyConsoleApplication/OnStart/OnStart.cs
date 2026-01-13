@@ -20,43 +20,58 @@ using ServiceLayer.ServiceServiceCollectionMethod;
 
 namespace MyConsoleApplication.OnStart
 {
+    /// <summary>
+    /// Provides startup configuration and dependency injection setup for the library management system.
+    /// </summary>
     public class OnStart
     {
+        /// <summary>
+        /// Configures all services and initializes the database.
+        /// </summary>
+        /// <returns>Configured service provider.</returns>
         public static IServiceProvider ConfigureServices()
         {
-            // Configure Serilog
-            ConfigureLogging();
-
             var services = new ServiceCollection();
 
-            // Add logging
+            // Add logging without SQL sink initially
             services.AddLogging(loggingBuilder =>
             {
                 loggingBuilder.AddSerilog(dispose: true);
             });
 
-            // Add Infrastructure services
+            // Register all services following layered architecture requirements
             services.AddInfrastructureServices();
-
-            // Add ServiceLayer services
             services.AddServiceLayerServices();
-
-            // Add DbContext
             services.AddScoped<LibraryContext>();
 
             var serviceProvider = services.BuildServiceProvider();
 
             using (var scope = serviceProvider.CreateScope())
             {
+                // Step 1: Create database and all tables using EF6 Code-First
                 var context = scope.ServiceProvider.GetRequiredService<LibraryContext>();
-                context.Database.Initialize(force: false); // Creează DB dacă nu există
-                Console.WriteLine("Database initialized!");
+                if (!context.Database.Exists())
+                {
+                    context.Database.CreateIfNotExists();
+                    Console.WriteLine("Database and tables created successfully.");
+                }
+                else
+                {
+                    Console.WriteLine("Database already exists.");
+                }
+
+                // Step 2: Configure Serilog SQL logging after database creation
+                ConfigureLogging();
+                Console.WriteLine("Serilog SQL logging configured.");
             }
 
             return serviceProvider;
-
-            //return services.BuildServiceProvider();
         }
+
+        /// <summary>
+        /// Configures Serilog with console and SQL Server sinks for comprehensive logging.
+        /// Logs are written to ApplicationLogs table with custom columns.
+        /// </summary>
         private static void ConfigureLogging()
         {
             var connectionString = ConfigurationManager.ConnectionStrings["LibraryDBConnectionString"]?.ConnectionString;
@@ -86,6 +101,7 @@ namespace MyConsoleApplication.OnStart
             columnOptions.Store.Remove(StandardColumn.Properties);
             columnOptions.Store.Remove(StandardColumn.Id);
 
+            // Configure logger with console (Information+) and SQL (Warning+)
             Log.Logger = new LoggerConfiguration()
                 .MinimumLevel.Information()
                 .WriteTo.Console(

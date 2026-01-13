@@ -19,6 +19,8 @@ namespace DataMapper
         /// </summary>
         public LibraryContext() : base("name=LibraryDBConnectionString")
         {
+            //create the database if it does not exist
+            Database.SetInitializer(new CreateDatabaseIfNotExists<LibraryContext>());
         }
 
         /// <summary>
@@ -100,14 +102,15 @@ namespace DataMapper
             modelBuilder.Entity<BorrowedBooks>()
                 .HasKey(bb => new { bb.BookId, bb.ReaderId });
 
-            // Dezactivează cascade delete pentru BorrowedBooks -> Reader
-            modelBuilder.Entity<BorrowedBooks>()
+            // Disable cascade delete for BorrowedBooks->Reader
+            
+                        modelBuilder.Entity<BorrowedBooks>()
                 .HasRequired(bb => bb.Reader)
                 .WithMany(r => r.BorrowedBooks)
                 .HasForeignKey(bb => bb.ReaderId)
                 .WillCascadeOnDelete(false);
 
-            // Dezactivează cascade delete pentru BorrowedBooks -> Book
+            // Disable cascade delete for BorrowedBooks -> Book
             modelBuilder.Entity<BorrowedBooks>()
                 .HasRequired(bb => bb.Book)
                 .WithMany(b => b.BorrowedBooks)
@@ -120,14 +123,14 @@ namespace DataMapper
                 .WithMany()
                 .Map(m => m.MapKey("ParentDomainId"));
 
-            // Configure relationship between Copy and Edition - DEZACTIVEAZĂ CASCADE DELETE
+            // Configure relationship between Copy and Edition - DISABLE CASCADE DELETE
             modelBuilder.Entity<Copy>()
                 .HasRequired(c => c.Edition)
                 .WithMany(e => e.Copies)
                 .WillCascadeOnDelete(false);
 
-            // **CONFIGURARE PENTRU EXTENSION**
-            // Extension -> BorrowedBooks (folosind cheile composite BookId și ReaderId)
+
+            // Extension -> BorrowedBooks (using composite keys BookId and ReaderId)
             modelBuilder.Entity<Extension>()
                 .HasRequired(ext => ext.BorrowedBooks)
                 .WithMany(bb => bb.Extensions)

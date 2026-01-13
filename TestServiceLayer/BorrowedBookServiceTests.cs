@@ -45,6 +45,7 @@ namespace TestServiceLayer
                 _mockReaderService.Object,
                 _mockBorrowedBooksRepository.Object,
                 _mockExtensionRepository.Object,
+                _mockConfigService.Object,
                 _mockLogger.Object);
         }
 

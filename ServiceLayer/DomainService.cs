@@ -220,11 +220,14 @@ namespace ServiceLayer
         /// <param name="domain">Domain to validate</param>
         private void ValidateDomain(Domain domain)
         {
-            if (string.IsNullOrWhiteSpace(domain.Name))
-                throw new ArgumentException("Domain name is required");
+            var result = _validator.Validate(domain);
 
-            if (domain.Name.Length < 5 || domain.Name.Length > 50)
-                throw new ArgumentException("Domain name must be between 5 and 50 characters");
+            if (!result.IsValid)
+            {
+                var errors = string.Join("; ", result.Errors.Select(e => e.ErrorMessage));
+                throw new ValidationException($"Domain validation failed: {errors}");
+            }
         }
+
     }
 }

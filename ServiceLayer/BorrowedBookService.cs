@@ -30,6 +30,7 @@ namespace ServiceLayer
         /// <param name="readerService">Reader service</param>
         /// <param name="borrowedBooksRepository">Borrowed books repository</param>
         /// <param name="extensionRepository">Extension repository</param>
+        /// <param name="configService">Configuration service</param>
         /// <param name="logger">Logger instance</param>
         public BorrowedBookService(
             IBorrowBookValidation borrowValidation,
@@ -37,6 +38,7 @@ namespace ServiceLayer
             IReaderService readerService,
             IBorrowedBooksRepository borrowedBooksRepository,
             IExtensionRepository extensionRepository,
+            IConfigurationService configService,
             ILogger<BorrowedBookService> logger)
         {
             _borrowValidation = borrowValidation ?? throw new ArgumentNullException(nameof(borrowValidation));
@@ -44,6 +46,7 @@ namespace ServiceLayer
             _readerService = readerService ?? throw new ArgumentNullException(nameof(readerService));
             _borrowedBooksRepository = borrowedBooksRepository ?? throw new ArgumentNullException(nameof(borrowedBooksRepository));
             _extensionRepository = extensionRepository ?? throw new ArgumentNullException(nameof(extensionRepository));
+            _configService = configService ?? throw new ArgumentNullException(nameof(configService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 

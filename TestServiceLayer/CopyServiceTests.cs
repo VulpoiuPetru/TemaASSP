@@ -34,12 +34,16 @@ namespace TestServiceLayer
             _mockLogger = new Mock<ILogger<CopyService>>();
             _mockValidator = new Mock<IValidator<Copy>>();
 
+            _mockValidator.Setup(v => v.Validate(It.IsAny<ValidationContext<Copy>>()))
+                         .Returns(new FluentValidation.Results.ValidationResult());
+
             _copyService = new CopyService(
                 _mockCopyRepository.Object,
                 _mockEditionRepository.Object,
                 _mockLogger.Object,
                 _mockValidator.Object);
         }
+
 
         [TestMethod]
         [ExpectedException(typeof(ArgumentNullException))]
@@ -49,7 +53,7 @@ namespace TestServiceLayer
         }
 
         [TestMethod]
-        [ExpectedException(typeof(ArgumentException))]
+        [ExpectedException(typeof(ArgumentException), "No edition assigned")]
         public void TestAddCopy_WithNoEdition_ThrowsException()
         {
             var copy = new Copy
@@ -60,13 +64,16 @@ namespace TestServiceLayer
                 Edition = null
             };
 
-            _copyService.AddCopy(copy);
+            //_mockEditionRepository.Setup(r => r.GetById(1)).Returns((Edition)null);
+
+            _copyService.AddCopy(copy);  // Ar trebui să arunce ArgumentException din service
         }
 
         [TestMethod]
         [ExpectedException(typeof(InvalidOperationException))]
         public void TestAddCopy_WithNonExistentEdition_ThrowsException()
         {
+            var edition = new Edition { EditionId = 999 };
             var copy = new Copy
             {
                 Id = 1,
@@ -83,7 +90,16 @@ namespace TestServiceLayer
         [TestMethod]
         public void TestAddCopy_WithValidCopy_CallsRepositoryAdd()
         {
-            var edition = new Edition { EditionId = 1 };
+            var edition = new Edition
+            {
+                EditionId = 1,
+                // Add any other required properties that ValidateCopy might check
+                // For example:
+                // BookId = 1,
+                // PublicationYear = 2020,
+                // etc.
+            };
+
             var copy = new Copy
             {
                 Id = 1,
@@ -125,14 +141,21 @@ namespace TestServiceLayer
         [TestMethod]
         public void TestUpdateCopy_WithValidCopy_CallsRepositoryUpdate()
         {
+            var edition = new Edition
+            {
+                EditionId = 1
+                // Add any other required properties that ValidateCopy might check
+            };
+
             var copy = new Copy
             {
                 Id = 1,
                 IsAvailable = true,
-                Edition = new Edition { EditionId = 1 }
+                Edition = edition
             };
 
             _mockCopyRepository.Setup(r => r.GetById(1)).Returns(copy);
+            _mockEditionRepository.Setup(r => r.GetById(1)).Returns(edition);
 
             _copyService.UpdateCopy(copy);
 
@@ -292,15 +315,22 @@ namespace TestServiceLayer
         [TestMethod]
         public void TestMarkAsBorrowed_WithValidCopy_UpdatesAvailability()
         {
+            var edition = new Edition
+            {
+                EditionId = 1
+                // Add other required properties
+            };
+
             var copy = new Copy
             {
                 Id = 1,
                 IsAvailable = true,
                 IsReadingRoomOnly = false,
-                Edition = new Edition { EditionId = 1 }
+                Edition = edition
             };
 
             _mockCopyRepository.Setup(r => r.GetById(1)).Returns(copy);
+            _mockEditionRepository.Setup(r => r.GetById(1)).Returns(edition);
 
             _copyService.MarkAsBorrowed(1);
 
@@ -335,14 +365,21 @@ namespace TestServiceLayer
         [TestMethod]
         public void TestMarkAsReturned_WithValidCopy_UpdatesAvailability()
         {
+            var edition = new Edition
+            {
+                EditionId = 1
+                // Add other required properties
+            };
+
             var copy = new Copy
             {
                 Id = 1,
                 IsAvailable = false,
-                Edition = new Edition { EditionId = 1 }
+                Edition = edition
             };
 
             _mockCopyRepository.Setup(r => r.GetById(1)).Returns(copy);
+            _mockEditionRepository.Setup(r => r.GetById(1)).Returns(edition);
 
             _copyService.MarkAsReturned(1);
 

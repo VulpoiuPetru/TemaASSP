@@ -212,32 +212,13 @@ namespace ServiceLayer
         /// <param name="book">Book to validate</param>
         private void ValidateBook(Book book)
         {
-            if (string.IsNullOrWhiteSpace(book.Title))
-                throw new ArgumentException("Book title is required");
+            var result = _validator.Validate(book);
 
-            if (book.Authors == null || !book.Authors.Any())
-                throw new ArgumentException("Book must have at least one author");
-
-            if (book.Domains == null || !book.Domains.Any())
-                throw new ArgumentException("Book must belong to at least one domain");
-
-            if (book.NumberOfTotalBooks < 0)
-                throw new ArgumentException("Number of total books cannot be negative");
-
-            if (book.NumberOfReadingRoomBooks < 0)
-                throw new ArgumentException("Number of reading room books cannot be negative");
-
-            if (book.NumberOfAvailableBooks < 0)
-                throw new ArgumentException("Number of available books cannot be negative");
-
-            if (book.NumberOfReadingRoomBooks > book.NumberOfTotalBooks)
-                throw new ArgumentException("Reading room books cannot exceed total books");
-
-            if (book.NumberOfAvailableBooks > book.NumberOfTotalBooks)
-                throw new ArgumentException("Available books cannot exceed total books");
-
-            if (book.Edition == null)
-                throw new ArgumentException("Book must have an edition");
+            if (!result.IsValid)
+            {
+                var errors = string.Join("; ", result.Errors.Select(e => e.ErrorMessage));
+                throw new ValidationException($"Book validation failed: {errors}");
+            }
         }
 
         /// <summary>

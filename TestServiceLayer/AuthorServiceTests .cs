@@ -54,7 +54,8 @@ namespace TestServiceLayer
                 AuthorId = 1,
                 FirstName = "George",
                 LastName = "Orwell",
-                Age = 46
+                Age = 46,
+                Books = new List<Book>()
             };
 
             _authorService.AddAuthor(author);
@@ -71,7 +72,8 @@ namespace TestServiceLayer
             {
                 FirstName = "",
                 LastName = "Orwell",
-                Age = 46
+                Age = 46,
+                Books = new List<Book>()
             };
 
             _authorService.AddAuthor(author);
@@ -85,7 +87,8 @@ namespace TestServiceLayer
             {
                 FirstName = "John",
                 LastName = "Orwell",
-                Age = 46
+                Age = 46,
+                Books = new List<Book>()
             };
 
             _authorService.AddAuthor(author);
@@ -99,7 +102,8 @@ namespace TestServiceLayer
             {
                 FirstName = new string('a', 51),
                 LastName = "Orwell",
-                Age = 46
+                Age = 46,
+                Books = new List<Book>()
             };
 
             _authorService.AddAuthor(author);
@@ -113,7 +117,8 @@ namespace TestServiceLayer
             {
                 FirstName = "George",
                 LastName = "",
-                Age = 46
+                Age = 46,
+                Books = new List<Book>()
             };
 
             _authorService.AddAuthor(author);
@@ -127,7 +132,8 @@ namespace TestServiceLayer
             {
                 FirstName = "George",
                 LastName = "Lee",
-                Age = 46
+                Age = 46,
+                Books = new List<Book>()
             };
 
             _authorService.AddAuthor(author);
@@ -141,7 +147,8 @@ namespace TestServiceLayer
             {
                 FirstName = "George",
                 LastName = "Orwell",
-                Age = 5
+                Age = 5,
+                Books = new List<Book>()
             };
 
             _authorService.AddAuthor(author);
@@ -179,7 +186,8 @@ namespace TestServiceLayer
                 AuthorId = 1,
                 FirstName = "George",
                 LastName = "Orwell",
-                Age = 46
+                Age = 46,
+                Books = new List<Book>()
             };
 
             _mockRepository.Setup(r => r.GetById(1)).Returns(author);

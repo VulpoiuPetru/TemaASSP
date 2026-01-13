@@ -217,20 +217,13 @@ namespace ServiceLayer
         /// <param name="extension">Extension to validate</param>
         private void ValidateExtension(Extension extension)
         {
-            if (extension.BookId <= 0)
-                throw new ArgumentException("Book ID must be positive");
-
-            if (extension.ReaderId <= 0)
-                throw new ArgumentException("Reader ID must be positive");
-
-            if (extension.ExtensionDays < 1 || extension.ExtensionDays > 90)
-                throw new ArgumentException("Extension days must be between 1 and 90");
-
-            if (extension.RequestDate == DateTime.MinValue)
-                throw new ArgumentException("Request date is required");
-
-            if (extension.BorrowedBooks == null)
-                throw new ArgumentException("Extension must be associated with a borrowed book");
+            var result = _validator.Validate(extension);
+            if (!result.IsValid)
+            {
+                var errors = string.Join("; ", result.Errors.Select(e => e.ErrorMessage));
+                throw new ValidationException($"Extension validation failed: {errors}");
+            }
         }
+
     }
 }

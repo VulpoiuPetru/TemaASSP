@@ -233,8 +233,14 @@ namespace ServiceLayer
         /// <param name="copy">Copy to validate</param>
         private void ValidateCopy(Copy copy)
         {
-            if (copy.Edition == null)
-                throw new ArgumentException("Copy must be associated with an edition");
+            var result = _validator.Validate(copy);
+
+            if (!result.IsValid)
+            {
+                var errors = string.Join("; ", result.Errors.Select(e => e.ErrorMessage));
+                throw new ValidationException($"Copy validation failed: {errors}");
+            }
         }
+
     }
 }

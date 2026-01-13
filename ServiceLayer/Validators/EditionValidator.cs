@@ -23,7 +23,7 @@ namespace ServiceLayer.Validators
                 .GreaterThanOrEqualTo(3);
 
             RuleFor(x => x.YearOfPublishing)
-                .InclusiveBetween(1000, 2999);
+                .InclusiveBetween(1400, 2100);
 
             RuleFor(x => x.Type)
                 .NotEmpty()

@@ -436,5 +436,38 @@ namespace TestServiceLayer
             _mockBookRepository.Verify(r => r.Update(book), Times.Once);
             _mockBookRepository.Verify(r => r.SaveChanges(), Times.Once);
         }
+
+        [TestMethod]
+        [ExpectedException(typeof(InvalidOperationException))]
+        public void AddBook_AncestorDescendantDomainsAssigned_Throws()
+        {
+            var configService = new Mock<IConfigurationService>();
+            configService.Setup(c => c.GetConfiguration()).Returns(new LibraryConfiguration { DOMENII = 5 });
+            var bookRepo = new Mock<IBookRepository>();
+            var domainRepo = new Mock<IDomainRepository>();
+            var logger = new Mock<ILogger<BookService>>();
+            var validator = new Mock<IValidator<Book>>();
+
+            var service = new BookService(configService.Object, bookRepo.Object, domainRepo.Object, logger.Object, validator.Object);
+
+            var root = new Domain { DomainId = 10, Name = "Science" };
+            var child = new Domain { DomainId = 11, Name = "Computer Science", Parent = root };
+
+            var b = new Book
+            {
+                BookId = 2,
+                Title = "Yyyyy",
+                Edition = new Edition { EditionId = 2, Publisher = "Publi", NumberOfPages = 3, YearOfPublishing = 2020, Type = "Hardcover" },
+                Authors = new List<Author> { new Author { AuthorId = 2, FirstName = "Ccccc", LastName = "Ddddd", Age = 40 } },
+                Domains = new List<Domain> { root, child },
+                NumberOfTotalBooks = 10,
+                NumberOfAvailableBooks = 9,
+                NumberOfReadingRoomBooks = 1
+            };
+
+            domainRepo.Setup(d => d.IsAncestor(10, 11)).Returns(true);
+
+            service.AddBook(b);
+        }
     }
 }

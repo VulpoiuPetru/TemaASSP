@@ -165,25 +165,14 @@ namespace ServiceLayer
         /// <param name="reader">Reader to validate</param>
         private void ValidateReader(Reader reader)
         {
-            if (string.IsNullOrWhiteSpace(reader.FirstName))
-                throw new ArgumentException("First name is required");
-
-            if (string.IsNullOrWhiteSpace(reader.LastName))
-                throw new ArgumentException("Last name is required");
-
-            if (reader.Age < 10 || reader.Age > 80)
-                throw new ArgumentException("Age must be between 10 and 80");
-
-            // At least one contact method required (from requirements)
-            if (!reader.HasValidContact())
-                throw new ArgumentException("Either email or phone number must be provided");
-
-            if (!string.IsNullOrWhiteSpace(reader.Email) && !IsValidEmail(reader.Email))
-                throw new ArgumentException("Invalid email format");
-
-            if (reader.NumberOfExtensions < 0)
-                throw new ArgumentException("Number of extensions cannot be negative");
+            var result = _validator.Validate(reader);
+            if (!result.IsValid)
+            {
+                var errors = string.Join("; ", result.Errors.Select(e => e.ErrorMessage));
+                throw new ValidationException($"Reader validation failed: {errors}");
+            }
         }
+
 
         /// <summary>
         /// Validates that contact information is unique

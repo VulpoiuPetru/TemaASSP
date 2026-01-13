@@ -132,9 +132,6 @@
     <Reference Include="Serilog.Sinks.MSSqlServer, Version=9.0.2.0, Culture=neutral, PublicKeyToken=24c2f752a8e58a10, processorArchitecture=MSIL">
       <HintPath>..\packages\Serilog.Sinks.MSSqlServer.9.0.2\lib\net472\Serilog.Sinks.MSSqlServer.dll</HintPath>
     </Reference>
-    <Reference Include="ServiceLayer, Version=1.2.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\ServiceLayer.1.2.0\lib\net40\ServiceLayer.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Buffers, Version=4.0.5.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
       <HintPath>..\packages\System.Buffers.4.6.1\lib\net462\System.Buffers.dll</HintPath>
@@ -236,6 +233,10 @@
     <ProjectReference Include="..\DomainModel\DomainModel.csproj">
       <Project>{f72e2ade-1cc8-4cfb-9b20-ac2d1ff3096f}</Project>
       <Name>DomainModel</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\ServiceLayer\ServiceLayer.csproj">
+      <Project>{d85da25f-0a16-4398-917b-20aa2aed8524}</Project>
+      <Name>ServiceLayer</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
