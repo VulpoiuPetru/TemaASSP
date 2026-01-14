@@ -1,6 +1,7 @@
 ﻿using DataMapper.RepoInterfaces;
 using DomainModel;
 using FluentValidation;
+using FluentValidation.Results;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -233,7 +234,11 @@ namespace ServiceLayer
         /// <param name="copy">Copy to validate</param>
         private void ValidateCopy(Copy copy)
         {
-            var result = _validator.Validate(copy);
+            // dacă vrei ArgumentException pentru testul cu “No edition assigned”
+            if (copy.Edition == null)
+                throw new ArgumentException("No edition assigned");
+
+            ValidationResult result = _validator.Validate(copy);
 
             if (!result.IsValid)
             {

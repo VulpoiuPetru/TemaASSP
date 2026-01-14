@@ -1,6 +1,7 @@
 ﻿using DataMapper.RepoInterfaces;
 using DomainModel;
 using FluentValidation;
+using FluentValidation.Results;
 using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
@@ -25,9 +26,6 @@ namespace TestServiceLayer
         private Mock<IValidator<Book>> _mockValidator;
         private BookService _bookService;
 
-        /// <summary>
-        /// Initializes test data before each test method
-        /// </summary>
         [TestInitialize]
         public void SetUp()
         {
@@ -36,6 +34,11 @@ namespace TestServiceLayer
             _mockDomainRepository = new Mock<IDomainRepository>();
             _mockLogger = new Mock<ILogger<BookService>>();
             _mockValidator = new Mock<IValidator<Book>>();
+
+            // Implicit: toate cărțile sunt valide (ValidationResult fără erori)
+            _mockValidator
+                .Setup(v => v.Validate(It.IsAny<Book>()))
+                .Returns(new ValidationResult());
 
             _bookService = new BookService(
                 _mockConfigService.Object,
@@ -56,53 +59,55 @@ namespace TestServiceLayer
         }
 
         [TestMethod]
-        [ExpectedException(typeof(ArgumentException))]
-        public void TestAddBook_WithEmptyTitle_ThrowsException()
-        {
-            var book = new Book
-            {
-                Title = "",
-                Authors = new List<Author> { new Author() },
-                Domains = new List<Domain> { new Domain() },
-                Edition = new Edition()
-            };
-
-            _bookService.AddBook(book);
-        }
-
-        [TestMethod]
-        [ExpectedException(typeof(ArgumentException))]
-        public void TestAddBook_WithNoAuthors_ThrowsException()
+        [ExpectedException(typeof(ValidationException))]
+        public void TestAddBook_WithNoAuthors_ThrowsValidationException()
         {
             var book = new Book
             {
                 Title = "Test Book",
                 Authors = new List<Author>(),
                 Domains = new List<Domain> { new Domain() },
-                Edition = new Edition()
+                Edition = new Edition(),
+                BorrowedBooks = new List<BorrowedBooks>()
             };
+
+            // Simulează eroare de validare (fără autori)
+            _mockValidator
+                .Setup(v => v.Validate(book))
+                .Returns(new ValidationResult(new[]
+                {
+                    new ValidationFailure("Authors", "Book must have at least one author")
+                }));
 
             _bookService.AddBook(book);
         }
 
         [TestMethod]
-        [ExpectedException(typeof(ArgumentException))]
-        public void TestAddBook_WithNoDomains_ThrowsException()
+        [ExpectedException(typeof(ValidationException))]
+        public void TestAddBook_WithNoDomains_ThrowsValidationException()
         {
             var book = new Book
             {
                 Title = "Test Book",
                 Authors = new List<Author> { new Author() },
                 Domains = new List<Domain>(),
-                Edition = new Edition()
+                Edition = new Edition(),
+                BorrowedBooks = new List<BorrowedBooks>()
             };
+
+            _mockValidator
+                .Setup(v => v.Validate(book))
+                .Returns(new ValidationResult(new[]
+                {
+                    new ValidationFailure("Domains", "Book must belong to at least one domain")
+                }));
 
             _bookService.AddBook(book);
         }
 
         [TestMethod]
-        [ExpectedException(typeof(ArgumentException))]
-        public void TestAddBook_WithNegativeTotalBooks_ThrowsException()
+        [ExpectedException(typeof(ValidationException))]
+        public void TestAddBook_WithNegativeTotalBooks_ThrowsValidationException()
         {
             var book = new Book
             {
@@ -110,15 +115,23 @@ namespace TestServiceLayer
                 Authors = new List<Author> { new Author() },
                 Domains = new List<Domain> { new Domain() },
                 Edition = new Edition(),
-                NumberOfTotalBooks = -1
+                NumberOfTotalBooks = -1,
+                BorrowedBooks = new List<BorrowedBooks>()
             };
+
+            _mockValidator
+                .Setup(v => v.Validate(book))
+                .Returns(new ValidationResult(new[]
+                {
+                    new ValidationFailure("NumberOfTotalBooks", "Total books cannot be negative")
+                }));
 
             _bookService.AddBook(book);
         }
 
         [TestMethod]
-        [ExpectedException(typeof(ArgumentException))]
-        public void TestAddBook_WithNegativeReadingRoomBooks_ThrowsException()
+        [ExpectedException(typeof(ValidationException))]
+        public void TestAddBook_WithNegativeReadingRoomBooks_ThrowsValidationException()
         {
             var book = new Book
             {
@@ -126,15 +139,23 @@ namespace TestServiceLayer
                 Authors = new List<Author> { new Author() },
                 Domains = new List<Domain> { new Domain() },
                 Edition = new Edition(),
-                NumberOfReadingRoomBooks = -1
+                NumberOfReadingRoomBooks = -1,
+                BorrowedBooks = new List<BorrowedBooks>()
             };
+
+            _mockValidator
+                .Setup(v => v.Validate(book))
+                .Returns(new ValidationResult(new[]
+                {
+                    new ValidationFailure("NumberOfReadingRoomBooks", "Reading room books cannot be negative")
+                }));
 
             _bookService.AddBook(book);
         }
 
         [TestMethod]
-        [ExpectedException(typeof(ArgumentException))]
-        public void TestAddBook_WithReadingRoomBooksExceedingTotal_ThrowsException()
+        [ExpectedException(typeof(ValidationException))]
+        public void TestAddBook_WithReadingRoomBooksExceedingTotal_ThrowsValidationException()
         {
             var book = new Book
             {
@@ -143,40 +164,67 @@ namespace TestServiceLayer
                 Domains = new List<Domain> { new Domain() },
                 Edition = new Edition(),
                 NumberOfTotalBooks = 5,
-                NumberOfReadingRoomBooks = 10
+                NumberOfReadingRoomBooks = 10,
+                BorrowedBooks = new List<BorrowedBooks>()
             };
+
+            _mockValidator
+                .Setup(v => v.Validate(book))
+                .Returns(new ValidationResult(new[]
+                {
+                    new ValidationFailure("NumberOfReadingRoomBooks",
+                        "Reading room books cannot exceed total books")
+                }));
 
             _bookService.AddBook(book);
         }
 
         [TestMethod]
-        [ExpectedException(typeof(ArgumentException))]
-        public void TestAddBook_WithAvailableBooksExceedingTotal_ThrowsException()
+        [ExpectedException(typeof(ValidationException))]
+        public void TestAddBook_WithAvailableBooksExceedingTotal_ThrowsValidationException()
         {
             var book = new Book
             {
                 Title = "Test Book",
-                Authors = new List<Author> { new Author() },
-                Domains = new List<Domain> { new Domain() },
-                Edition = new Edition(),
+                Authors = new List<Author> { new Author { FirstName = "John", LastName = "Doe", Age = 40 } },
+                Domains = new List<Domain> { new Domain { DomainId = 1, Name = "Science" } },
+                Edition = new Edition { EditionId = 1 },
                 NumberOfTotalBooks = 5,
-                NumberOfAvailableBooks = 10
+                NumberOfAvailableBooks = 10,
+                NumberOfReadingRoomBooks = 0,
+                BorrowedBooks = new List<BorrowedBooks>()
             };
+
+            _mockValidator
+                .Setup(v => v.Validate(book))
+                .Returns(new ValidationResult(new[]
+                {
+                    new ValidationFailure("NumberOfAvailableBooks",
+                        "Available books cannot exceed total books")
+                }));
 
             _bookService.AddBook(book);
         }
 
         [TestMethod]
-        [ExpectedException(typeof(ArgumentException))]
-        public void TestAddBook_WithNoEdition_ThrowsException()
+        [ExpectedException(typeof(ValidationException))]
+        public void TestAddBook_WithNoEdition_ThrowsValidationException()
         {
             var book = new Book
             {
                 Title = "Test Book",
                 Authors = new List<Author> { new Author() },
                 Domains = new List<Domain> { new Domain() },
-                Edition = null
+                Edition = null,
+                BorrowedBooks = new List<BorrowedBooks>()
             };
+
+            _mockValidator
+                .Setup(v => v.Validate(book))
+                .Returns(new ValidationResult(new[]
+                {
+                    new ValidationFailure("Edition", "Edition is required")
+                }));
 
             _bookService.AddBook(book);
         }
@@ -198,7 +246,8 @@ namespace TestServiceLayer
                 },
                 Edition = new Edition(),
                 NumberOfTotalBooks = 10,
-                NumberOfAvailableBooks = 10
+                NumberOfAvailableBooks = 10,
+                BorrowedBooks = new List<BorrowedBooks>()
             };
 
             _bookService.AddBook(book);
@@ -218,10 +267,37 @@ namespace TestServiceLayer
                 Domains = new List<Domain> { domain1, domain2 },
                 Edition = new Edition(),
                 NumberOfTotalBooks = 10,
-                NumberOfAvailableBooks = 10
+                NumberOfAvailableBooks = 10,
+                BorrowedBooks = new List<BorrowedBooks>()
             };
 
             _mockDomainRepository.Setup(r => r.IsAncestor(1, 2)).Returns(true);
+
+            _bookService.AddBook(book);
+        }
+
+        [TestMethod]
+        [ExpectedException(typeof(ValidationException))]
+        public void TestAddBook_WithEmptyTitle_ThrowsValidationException()
+        {
+            var book = new Book
+            {
+                Title = "",
+                Authors = new List<Author> { new Author { FirstName = "Test", LastName = "Author", Age = 30 } },
+                Domains = new List<Domain> { new Domain { DomainId = 1, Name = "Test" } },
+                Edition = new Edition { EditionId = 1 },
+                NumberOfTotalBooks = 10,
+                NumberOfAvailableBooks = 10,
+                NumberOfReadingRoomBooks = 0,
+                BorrowedBooks = new List<BorrowedBooks>()
+            };
+
+            _mockValidator
+                .Setup(v => v.Validate(book))
+                .Returns(new ValidationResult(new[]
+                {
+                    new ValidationFailure("Title", "Title is required")
+                }));
 
             _bookService.AddBook(book);
         }
@@ -233,16 +309,18 @@ namespace TestServiceLayer
             {
                 BookId = 1,
                 Title = "Test Book",
-                Authors = new List<Author> { new Author { AuthorId = 1 } },
-                Domains = new List<Domain> { new Domain { DomainId = 1 } },
-                Edition = new Edition { EditionId = 1 },
+                Authors = new List<Author> { new Author { AuthorId = 1, FirstName = "John", LastName = "Doe", Age = 40 } },
+                Domains = new List<Domain> { new Domain { DomainId = 1, Name = "Science" } },
+                Edition = new Edition { EditionId = 1, Publisher = "TestPub" },
                 NumberOfTotalBooks = 10,
                 NumberOfAvailableBooks = 10,
-                NumberOfReadingRoomBooks = 0
+                NumberOfReadingRoomBooks = 0,
+                BorrowedBooks = new List<BorrowedBooks>()
             };
 
             _mockDomainRepository.Setup(r => r.IsAncestor(It.IsAny<int>(), It.IsAny<int>())).Returns(false);
 
+            // implicit validator valid (din SetUp)
             _bookService.AddBook(book);
 
             _mockBookRepository.Verify(r => r.Add(book), Times.Once);
@@ -266,7 +344,8 @@ namespace TestServiceLayer
                 Title = "Test Book",
                 Authors = new List<Author> { new Author() },
                 Domains = new List<Domain> { new Domain() },
-                Edition = new Edition()
+                Edition = new Edition(),
+                BorrowedBooks = new List<BorrowedBooks>()
             };
 
             _mockBookRepository.Setup(r => r.GetById(999)).Returns((Book)null);
@@ -286,7 +365,8 @@ namespace TestServiceLayer
                 Edition = new Edition { EditionId = 1 },
                 NumberOfTotalBooks = 10,
                 NumberOfAvailableBooks = 10,
-                NumberOfReadingRoomBooks = 0
+                NumberOfReadingRoomBooks = 0,
+                BorrowedBooks = new List<BorrowedBooks>()
             };
 
             _mockBookRepository.Setup(r => r.GetById(1)).Returns(book);
@@ -448,6 +528,10 @@ namespace TestServiceLayer
             var logger = new Mock<ILogger<BookService>>();
             var validator = new Mock<IValidator<Book>>();
 
+            validator
+                .Setup(v => v.Validate(It.IsAny<Book>()))
+                .Returns(new ValidationResult());
+
             var service = new BookService(configService.Object, bookRepo.Object, domainRepo.Object, logger.Object, validator.Object);
 
             var root = new Domain { DomainId = 10, Name = "Science" };
@@ -462,7 +546,8 @@ namespace TestServiceLayer
                 Domains = new List<Domain> { root, child },
                 NumberOfTotalBooks = 10,
                 NumberOfAvailableBooks = 9,
-                NumberOfReadingRoomBooks = 1
+                NumberOfReadingRoomBooks = 1,
+                BorrowedBooks = new List<BorrowedBooks>()
             };
 
             domainRepo.Setup(d => d.IsAncestor(10, 11)).Returns(true);

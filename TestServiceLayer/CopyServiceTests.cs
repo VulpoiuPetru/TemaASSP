@@ -1,6 +1,7 @@
 ﻿using DataMapper.RepoInterfaces;
 using DomainModel;
 using FluentValidation;
+using FluentValidation.Results;
 using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
@@ -34,8 +35,9 @@ namespace TestServiceLayer
             _mockLogger = new Mock<ILogger<CopyService>>();
             _mockValidator = new Mock<IValidator<Copy>>();
 
-            _mockValidator.Setup(v => v.Validate(It.IsAny<ValidationContext<Copy>>()))
-                         .Returns(new FluentValidation.Results.ValidationResult());
+            _mockValidator
+                .Setup(v => v.Validate(It.IsAny<Copy>()))
+                .Returns(new ValidationResult());
 
             _copyService = new CopyService(
                 _mockCopyRepository.Object,
@@ -64,16 +66,13 @@ namespace TestServiceLayer
                 Edition = null
             };
 
-            //_mockEditionRepository.Setup(r => r.GetById(1)).Returns((Edition)null);
-
-            _copyService.AddCopy(copy);  // Ar trebui să arunce ArgumentException din service
+            _copyService.AddCopy(copy);
         }
 
         [TestMethod]
         [ExpectedException(typeof(InvalidOperationException))]
         public void TestAddCopy_WithNonExistentEdition_ThrowsException()
         {
-            var edition = new Edition { EditionId = 999 };
             var copy = new Copy
             {
                 Id = 1,
@@ -92,12 +91,7 @@ namespace TestServiceLayer
         {
             var edition = new Edition
             {
-                EditionId = 1,
-                // Add any other required properties that ValidateCopy might check
-                // For example:
-                // BookId = 1,
-                // PublicationYear = 2020,
-                // etc.
+                EditionId = 1
             };
 
             var copy = new Copy
@@ -144,7 +138,6 @@ namespace TestServiceLayer
             var edition = new Edition
             {
                 EditionId = 1
-                // Add any other required properties that ValidateCopy might check
             };
 
             var copy = new Copy
@@ -318,7 +311,6 @@ namespace TestServiceLayer
             var edition = new Edition
             {
                 EditionId = 1
-                // Add other required properties
             };
 
             var copy = new Copy
@@ -368,7 +360,6 @@ namespace TestServiceLayer
             var edition = new Edition
             {
                 EditionId = 1
-                // Add other required properties
             };
 
             var copy = new Copy

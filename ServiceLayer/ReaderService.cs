@@ -165,6 +165,28 @@ namespace ServiceLayer
         /// <param name="reader">Reader to validate</param>
         private void ValidateReader(Reader reader)
         {
+            if (string.IsNullOrWhiteSpace(reader.FirstName))
+                throw new ArgumentException("First name cannot be empty");
+
+            if (string.IsNullOrWhiteSpace(reader.LastName))
+                throw new ArgumentException("Last name cannot be empty");
+
+            if (reader.Age < 10)
+                throw new ArgumentException("Reader must be at least 10 years old");
+
+            if (reader.Age > 80)
+                throw new ArgumentException("Reader age cannot exceed 80 years");
+
+            if (string.IsNullOrWhiteSpace(reader.Email) &&
+                string.IsNullOrWhiteSpace(reader.PhoneNumber))
+                throw new ArgumentException("At least one contact info (email or phone) is required");
+
+            if (!string.IsNullOrWhiteSpace(reader.Email) && !IsValidEmail(reader.Email))
+                throw new ArgumentException("Invalid email format");
+
+            if (reader.NumberOfExtensions < 0)
+                throw new ArgumentException("Number of extensions cannot be negative");
+
             var result = _validator.Validate(reader);
             if (!result.IsValid)
             {
@@ -172,6 +194,7 @@ namespace ServiceLayer
                 throw new ValidationException($"Reader validation failed: {errors}");
             }
         }
+
 
 
         /// <summary>

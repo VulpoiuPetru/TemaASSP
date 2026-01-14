@@ -1,6 +1,7 @@
 ﻿using DataMapper.RepoInterfaces;
 using DomainModel;
 using FluentValidation;
+using FluentValidation.Results;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -24,11 +25,6 @@ namespace ServiceLayer
         /// <summary>
         /// Initializes a new instance of the BookService class
         /// </summary>
-        /// <param name="configService">Configuration service</param>
-        /// <param name="bookRepository">Book repository</param>
-        /// <param name="domainRepository">Domain repository</param>
-        /// <param name="logger">Logger instance</param>
-        /// <param name="validator">FluentValidation validator for Book</param>
         public BookService(
             IConfigurationService configService,
             IBookRepository bookRepository,
@@ -46,7 +42,6 @@ namespace ServiceLayer
         /// <summary>
         /// Validate and pass a book object to the data service for creation
         /// </summary>
-        /// <param name="book">The book</param>
         public void AddBook(Book book)
         {
             try
@@ -72,7 +67,6 @@ namespace ServiceLayer
         /// <summary>
         /// Validate and pass a book object to the data service for updating
         /// </summary>
-        /// <param name="book">The book</param>
         public void UpdateBook(Book book)
         {
             try
@@ -102,8 +96,6 @@ namespace ServiceLayer
         /// <summary>
         /// Get a book by its identifier
         /// </summary>
-        /// <param name="bookId">The book identifier</param>
-        /// <returns>The book if found</returns>
         public Book GetBookById(int bookId)
         {
             try
@@ -120,7 +112,6 @@ namespace ServiceLayer
         /// <summary>
         /// Get all books in the library
         /// </summary>
-        /// <returns>List of all books</returns>
         public IList<Book> GetAllBooks()
         {
             try
@@ -137,7 +128,6 @@ namespace ServiceLayer
         /// <summary>
         /// Delete a book by its identifier
         /// </summary>
-        /// <param name="bookId">The book identifier</param>
         public void DeleteBook(int bookId)
         {
             try
@@ -164,8 +154,6 @@ namespace ServiceLayer
         /// <summary>
         /// Set domains for a book with validation
         /// </summary>
-        /// <param name="bookId">The book identifier</param>
-        /// <param name="domainIds">List of domain identifiers</param>
         public void SetBookDomains(int bookId, IList<int> domainIds)
         {
             try
@@ -207,12 +195,11 @@ namespace ServiceLayer
         }
 
         /// <summary>
-        /// Validates book data according to business rules
+        /// Validates book data according to business rules (FluentValidation)
         /// </summary>
-        /// <param name="book">Book to validate</param>
         private void ValidateBook(Book book)
         {
-            var result = _validator.Validate(book);
+            ValidationResult result = _validator.Validate(book);
 
             if (!result.IsValid)
             {
@@ -224,7 +211,6 @@ namespace ServiceLayer
         /// <summary>
         /// Validates domain assignment according to business rules
         /// </summary>
-        /// <param name="book">Book to validate</param>
         private void ValidateDomainAssignment(Book book)
         {
             var config = _configService.GetConfiguration();
@@ -232,7 +218,6 @@ namespace ServiceLayer
             if (book.Domains.Count > config.DOMENII)
                 throw new InvalidOperationException($"Maximum allowed domains per book is {config.DOMENII}");
 
-            // Validate ancestor-descendant relationships
             var domainIds = book.Domains.Select(d => d.DomainId).ToList();
             ValidateDomainRelationships(domainIds);
         }
@@ -240,22 +225,18 @@ namespace ServiceLayer
         /// <summary>
         /// Validates that domains don't have ancestor-descendant relationships
         /// </summary>
-        /// <param name="domainIds">List of domain IDs to validate</param>
         private void ValidateDomainRelationships(IList<int> domainIds)
         {
-            // Check each pair of domains
             for (int i = 0; i < domainIds.Count; i++)
             {
                 for (int j = i + 1; j < domainIds.Count; j++)
                 {
-                    // Check if domain i is ancestor of domain j
                     if (_domainRepository.IsAncestor(domainIds[i], domainIds[j]))
                     {
                         throw new InvalidOperationException(
                             $"Cannot assign book to both a domain and its ancestor domain (IDs: {domainIds[i]}, {domainIds[j]})");
                     }
 
-                    // Check if domain j is ancestor of domain i
                     if (_domainRepository.IsAncestor(domainIds[j], domainIds[i]))
                     {
                         throw new InvalidOperationException(

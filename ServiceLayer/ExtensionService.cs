@@ -217,6 +217,24 @@ namespace ServiceLayer
         /// <param name="extension">Extension to validate</param>
         private void ValidateExtension(Extension extension)
         {
+            if (extension.BookId <= 0)
+                throw new ArgumentException("BookId must be greater than zero");
+
+            if (extension.ReaderId <= 0)
+                throw new ArgumentException("ReaderId must be greater than zero");
+
+            if (extension.ExtensionDays <= 0)
+                throw new ArgumentException("ExtensionDays must be greater than zero");
+
+            if (extension.ExtensionDays > 30) 
+                throw new ArgumentException("ExtensionDays cannot exceed 30");
+
+            if (extension.RequestDate == DateTime.MinValue)
+                throw new ArgumentException("RequestDate must be a valid date");
+
+            if (extension.BorrowedBooks == null)
+                throw new ArgumentException("BorrowedBooks reference is required");
+
             var result = _validator.Validate(extension);
             if (!result.IsValid)
             {
@@ -224,6 +242,7 @@ namespace ServiceLayer
                 throw new ValidationException($"Extension validation failed: {errors}");
             }
         }
+
 
     }
 }

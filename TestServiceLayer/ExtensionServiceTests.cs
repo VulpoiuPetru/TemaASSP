@@ -34,6 +34,10 @@ namespace TestServiceLayer
             _mockLogger = new Mock<ILogger<ExtensionService>>();
             _mockValidator = new Mock<IValidator<Extension>>();
 
+            _mockValidator
+        .Setup(v => v.Validate(It.IsAny<Extension>()))
+        .Returns(new FluentValidation.Results.ValidationResult());
+
             _extensionService = new ExtensionService(
                 _mockExtensionRepository.Object,
                 _mockBorrowedBooksRepository.Object,

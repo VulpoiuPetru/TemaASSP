@@ -34,6 +34,10 @@ namespace TestServiceLayer
             _mockLogger = new Mock<ILogger<EditionService>>();
             _mockValidator = new Mock<IValidator<Edition>>();
 
+            _mockValidator
+        .Setup(v => v.Validate(It.IsAny<Edition>()))
+        .Returns(new FluentValidation.Results.ValidationResult());
+
             _editionService = new EditionService(
                 _mockEditionRepository.Object,
                 _mockBookRepository.Object,

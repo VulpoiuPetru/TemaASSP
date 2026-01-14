@@ -32,6 +32,10 @@ namespace TestServiceLayer
             _mockLogger = new Mock<ILogger<DomainService>>();
             _mockValidator = new Mock<IValidator<Domain>>();
 
+            _mockValidator
+       .Setup(v => v.Validate(It.IsAny<Domain>()))
+       .Returns(new FluentValidation.Results.ValidationResult());
+
             _domainService = new DomainService(
                 _mockDomainRepository.Object,
                 _mockLogger.Object,

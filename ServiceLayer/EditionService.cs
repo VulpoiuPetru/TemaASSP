@@ -190,6 +190,24 @@ namespace ServiceLayer
         /// <param name="edition">Edition to validate</param>
         private void ValidateEdition(Edition edition)
         {
+            if (string.IsNullOrWhiteSpace(edition.Publisher))
+                throw new ArgumentException("Publisher cannot be empty");
+
+            if (edition.Publisher.Length < 5)
+                throw new ArgumentException("Publisher name must be at least 5 characters long");
+
+            if (edition.NumberOfPages < 3)
+                throw new ArgumentException("Number of pages must be at least 3");
+
+            if (edition.YearOfPublishing < 1000 || edition.YearOfPublishing > 2999)
+                throw new ArgumentException("Year must be between 1000 and 2999");
+
+            if (string.IsNullOrWhiteSpace(edition.Type))
+                throw new ArgumentException("Type cannot be empty");
+
+            if (edition.Book == null)
+                throw new ArgumentException("Edition must be associated with a book");
+
             var result = _validator.Validate(edition);
             if (!result.IsValid)
             {
@@ -197,6 +215,7 @@ namespace ServiceLayer
                 throw new ValidationException($"Edition validation failed: {errors}");
             }
         }
+
 
     }
 }

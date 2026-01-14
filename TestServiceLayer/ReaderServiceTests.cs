@@ -32,6 +32,10 @@ namespace TestServiceLayer
             _mockLogger = new Mock<ILogger<ReaderService>>();
             _mockValidator = new Mock<IValidator<Reader>>();
 
+            _mockValidator
+        .Setup(v => v.Validate(It.IsAny<Reader>()))
+        .Returns(new FluentValidation.Results.ValidationResult());
+
             _readerService = new ReaderService(
                 _mockReaderRepository.Object,
                 _mockLogger.Object,
